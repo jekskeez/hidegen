@@ -33,27 +33,35 @@ def get_available_domains():
         return []
 
 def create_email():
+    """Создание почты с помощью API Mail.tm."""
     try:
-        # Получаем список доступных доменов через API
         domains = get_available_domains()
         if not domains:
             print("Список доменов пуст.")
             return None
         
-        # Выбираем первый доступный домен
         domain = domains[0]
         username = generate_username()
         address = f"{username}@{domain}"
+        password = generate_username(12)
 
-        # Создаем аккаунт
-        account = mail_client.create_account(address, password=generate_username(12))
-        if account:
-            email = account['address']
-            print(f"Почта успешно создана: {email}")
-            return email
+        # Данные для создания аккаунта
+        payload = {
+            "address": address,
+            "password": password
+        }
+
+        response = requests.post("https://api.mail.tm/accounts", json=payload)
+        if response.status_code == 201:
+            print(f"Почта успешно создана: {address}")
+            return address
+        elif response.status_code == 422:
+            print("Ошибка 422: Некорректные данные (например, имя пользователя или домен).")
+            print(f"Ответ сервера: {response.json()}")
         else:
-            print("Не удалось создать почту.")
-            return None
+            print(f"Не удалось создать почту. Код ответа: {response.status_code}")
+            print(f"Ответ сервера: {response.text}")
+        return None
     except Exception as e:
         print(f"Ошибка при создании почты: {e}")
         return None
