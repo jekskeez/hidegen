@@ -155,5 +155,7 @@ async def main():
     await application.run_polling()
 
 if __name__ == "__main__":
+    import nest_asyncio
+    nest_asyncio.apply()  # Разрешает использование event loop в Jupyter или других подобных средах
     import asyncio
-    asyncio.run(main())
+    asyncio.run(main())  # Запускаем асинхронную функцию main
