@@ -1,61 +1,92 @@
-import logging
+import time
+import requests
 from pymailtm import MailTm
-from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram import Bot, Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
 
-# Установим логирование
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Создаем объект для работы с API Mail.tm
+mailtm = MailTm()
 
-# Настройка Mail.tm с использованием pymailtm
-def create_temp_email():
-    # Создаем объект MailTm
-    client = MailTm()
+# Функция для получения почтового ящика
+def get_temp_email():
+    mailbox = mailtm.create_mailbox()
+    return mailbox['address']
 
-    # Аутентификация: Логин и пароль
-    client.login("your_email@example.com", "your_password")  # Замените на свои учетные данные
+# Функция для проверки новых писем на Mail.tm
+def check_email():
+    while True:
+        messages = mailtm.get_messages(mailbox['address'])
+        if messages:
+            for message in messages:
+                if 'Подтвердите e-mail' in message['subject']:
+                    # Найдем ссылку для подтверждения
+                    confirm_link = message['text'].split('href="')[1].split('"')[0]
+                    print(f"Confirm link: {confirm_link}")
+                    return confirm_link
+        time.sleep(5)
 
-    # Получаем список доступных доменов
-    domains = client.get_domains()
-
-    if domains:
-        # Используем первый домен из списка
-        domain = domains[0]['domain']
-        # Создаем временный email
-        email = client.create_account(domain=domain)
-        return email
+# Подтверждаем почту
+def confirm_email(confirm_link):
+    response = requests.get(confirm_link)
+    if response.status_code == 200:
+        print("Email confirmed successfully.")
     else:
-        print("Не удалось получить домены.")
-        return None
+        print("Failed to confirm email.")
 
-# Обработчик команды /get в Telegram
-async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
-    
-    # Создаем временный email
-    email = create_temp_email()
-    
-    if email:
-        await update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
-        
-        # Здесь можно добавить код для регистрации на сайте и получения кода
-    
-    else:
-        await update.message.reply_text("Не удалось создать временный email.")
+# Функция для получения тестового кода из письма
+def get_access_code():
+    while True:
+        messages = mailtm.get_messages(mailbox['address'])
+        for message in messages:
+            if 'Ваш код для тестового доступа' in message['subject']:
+                code = message['text'].split('Ваш тестовый код: ')[1].strip()
+                print(f"Test code: {code}")
+                return code
+        time.sleep(5)
 
-# Основная функция для запуска бота
-async def main():
-    # Получаем токен для Telegram-бота
-    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
-    
-    # Регистрируем обработчик команд
-    application.add_handler(CommandHandler("get", start))
-    
-    # Запускаем бота
-    await application.run_polling()
+# Отправка тестового кода в Telegram
+def send_code_to_user(user_id, code):
+    bot = Bot(token="7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI")
+    message = f"Ваш тестовый код: {code}"
+    bot.send_message(chat_id=user_id, text=message)
 
-if __name__ == "__main__":
-    import nest_asyncio
-    nest_asyncio.apply()  # Разрешает использование event loop в Jupyter или других подобных средах
-    import asyncio
-    asyncio.run(main())  # Запускаем асинхронную функцию main
+# Основная функция для команды /get
+def get_code(update: Update, context: CallbackContext):
+    user_id = update.message.chat.id
+    
+    # Получаем новый почтовый ящик
+    email_address = get_temp_email()
+    print(f"Generated email: {email_address}")
+    
+    # Шлем запрос на сайт для получения письма
+    demo_url = "https://hidenx.name/demo/"
+    response = requests.get(demo_url, params={"email": email_address})
+    
+    # Проверка письма с подтверждением
+    print("Checking email for confirmation link...")
+    confirm_link = check_email()
+    
+    # Подтверждаем почту
+    print("Confirming email...")
+    confirm_email(confirm_link)
+    
+    # Получаем тестовый код
+    print("Getting test code...")
+    test_code = get_access_code()
+    
+    # Отправляем код пользователю
+    send_code_to_user(user_id, test_code)
+    update.message.reply_text("Ваш тестовый код был отправлен!")
+
+# Настройка и запуск бота
+def main():
+    updater = Updater("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI", use_context=True)
+    dp = updater.dispatcher
+    
+    dp.add_handler(CommandHandler("get", get_code))
+    
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
