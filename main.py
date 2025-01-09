@@ -286,31 +286,36 @@ async def start(update: Update, context):
     await update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
 
 async def get_test_code_telegram(update: Update, context):
-    # Генерация почты и пароля
-    email, password = create_email()  # Ожидаем оба значения
-    if not email or not password:
-        await update.message.reply_text("Ошибка при создании почты. Попробуйте позже.")
-        return
+    try:
+        # Генерация почты и пароля
+        email, password = create_email()  # Ожидаем оба значения
+        if not email or not password:
+            await update.message.reply_text("Ошибка при создании почты. Попробуйте позже.")
+            return
 
-    print(f"Созданная почта: {email}")
-    print(f"Используемый пароль: {password}")
+        print(f"Созданная почта: {email}")
+        print(f"Используемый пароль: {password}")
 
-    # Регистрация на сайте
-    if not register_on_site(email):
-        await update.message.reply_text("Ошибка при регистрации на сайте.")
-        return
+        # Регистрация на сайте
+        if not register_on_site(email):
+            await update.message.reply_text("Ошибка при регистрации на сайте.")
+            return
 
-    # Подтверждение почты
-    if not confirm_email(email, password):  # Передаём оба аргумента
-        await update.message.reply_text("Не удалось подтвердить почту.")
-        return
+        # Подтверждение почты
+        if not confirm_email(email, password):  # Передаём оба аргумента
+            await update.message.reply_text("Не удалось подтвердить почту.")
+            return
 
-    # Получение тестового кода
-    test_code = get_test_code(email, password)  # Передаём оба аргумента
-    if test_code:
-        await update.message.reply_text(f"Ваш тестовый код: {test_code}")
-    else:
-        await update.message.reply_text("Не удалось получить тестовый код.")
+        # Получение тестового кода
+        test_code = get_test_code(email, password)  # Передаём оба аргумента
+        if test_code:
+            await update.message.reply_text(f"Ваш тестовый код: {test_code}")
+        else:
+            await update.message.reply_text("Не удалось получить тестовый код.")
+    except Exception as e:
+        print(f"Ошибка в процессе получения тестового кода: {e}")
+        await update.message.reply_text("Произошла ошибка. Попробуйте позже.")
+
         
 def main():
     TELEGRAM_TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
