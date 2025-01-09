@@ -226,7 +226,7 @@ def confirm_email(email, password):
                     email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
                     if email_response.status_code == 200:
                         email_data = email_response.json()
-                        print(f"API: {email_response}")
+                        print(f"https://api.mail.tm/messages/{message_id}", headers=headers)
 
                         # Извлекаем текст и HTML из письма
                         text_body = email_data.get("text", "")
