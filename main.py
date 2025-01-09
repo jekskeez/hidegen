@@ -67,10 +67,23 @@ def create_email():
         print(f"Ошибка при создании почты: {e}")
         return None
 
-def get_inbox(email):
+def get_inbox(email, retries=10, delay=5):
+    """Получение писем с ожиданием."""
     try:
-        inbox = mail_client.get_inbox(email)
-        return inbox
+        for attempt in range(retries):
+            print(f"Попытка {attempt + 1}/{retries} получить письма...")
+            account = mail_client.get_account(email)  # Получаем аккаунт
+            inbox = account.get_messages()  # Получаем письма
+
+            if inbox:
+                print("Письма получены.")
+                return inbox
+            else:
+                print(f"Нет писем. Ожидание {delay} секунд...")
+                time.sleep(delay)
+
+        print("Письма не пришли за указанное время.")
+        return []
     except Exception as e:
         print(f"Ошибка при получении писем: {e}")
         return []
@@ -158,7 +171,7 @@ def confirm_email(email):
 
         for email_data in inbox:
             if "Подтвердите e-mail" in email_data['subject']:
-                confirm_url = email_data['body']['text']['plain'].strip()
+                confirm_url = email_data['intro'][0]
                 response = requests.get(confirm_url)
                 if response.status_code == 200:
                     print("Почта подтверждена.")
@@ -175,7 +188,7 @@ def get_test_code(email):
 
         for email_data in inbox:
             if "Ваш код для тестового доступа к сервису" in email_data['subject']:
-                code = email_data['body']['text']['plain']
+                code = email_data['intro'][0]
                 test_code = code.split(":")[1].strip()
                 print(f"Тестовый код: {test_code}")
                 return test_code
