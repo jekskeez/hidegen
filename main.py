@@ -89,6 +89,7 @@ def get_token(email, password):
         return None
 
 def get_inbox(email, password, retries=10, delay=5):
+    """Получение писем из почтового ящика."""
     token = get_token(email, password)
     if not token:
         print("Не удалось авторизоваться. Проверьте почту и пароль.")
@@ -112,7 +113,6 @@ def get_inbox(email, password, retries=10, delay=5):
 
     print("Не удалось получить письма за указанное время.")
     return []
-
         
 demo_url = 'https://hidenx.name/demo/'
 
