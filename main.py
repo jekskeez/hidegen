@@ -2,7 +2,7 @@ import time
 import requests
 from pymailtm import MailTm
 from telegram import Bot, Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Создаем объект для работы с API Mail.tm
 mailtm = MailTm()
@@ -45,13 +45,13 @@ def get_access_code():
         time.sleep(5)
 
 # Отправка тестового кода в Telegram
-def send_code_to_user(user_id, code):
+async def send_code_to_user(user_id, code):
     bot = Bot(token="7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI")
     message = f"Ваш тестовый код: {code}"
-    bot.send_message(chat_id=user_id, text=message)
+    await bot.send_message(chat_id=user_id, text=message)
 
 # Основная функция для команды /get
-def get_code(update: Update, context: CallbackContext):
+async def get_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat.id
     
     # Получаем новый почтовый ящик
@@ -75,18 +75,18 @@ def get_code(update: Update, context: CallbackContext):
     test_code = get_access_code()
     
     # Отправляем код пользователю
-    send_code_to_user(user_id, test_code)
-    update.message.reply_text("Ваш тестовый код был отправлен!")
+    await send_code_to_user(user_id, test_code)
+    await update.message.reply_text("Ваш тестовый код был отправлен!")
 
 # Настройка и запуск бота
 def main():
-    updater = Updater("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI", use_context=True)
-    dp = updater.dispatcher
-    
-    dp.add_handler(CommandHandler("get", get_code))
-    
-    updater.start_polling()
-    updater.idle()
+    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
+
+    # Добавляем обработчик команды /get
+    application.add_handler(CommandHandler("get", get_code))
+
+    # Запускаем бота
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
