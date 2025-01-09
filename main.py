@@ -1,6 +1,6 @@
 import time
 import requests
-from mailtmapi import MailTM  # Импортируем правильный класс MailTM
+from mailtm import MailTM  # Импортируем правильный класс MailTM
 from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
