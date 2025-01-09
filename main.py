@@ -8,6 +8,7 @@ import requests
 import random
 import string
 import time
+import re
 
 # Убедитесь, что директория для базы данных MailTm существует
 os.makedirs(os.path.expanduser("~/.pymailtm"), exist_ok=True)
@@ -192,9 +193,6 @@ def register_on_site(email):
         print(f"Ошибка при регистрации: {e}")
         return None
 
-import re
-from bs4 import BeautifulSoup
-
 def confirm_email(email, password):
     try:
         token = get_token(email, password)
@@ -206,13 +204,13 @@ def confirm_email(email, password):
         headers = {"Authorization": f"Bearer {token}"}
 
         # Ожидание писем (до 60 секунд, проверяя каждые 5 секунд)
-        for _ in range(20):  # 12 попыток по 5 секунд
+        for _ in range(12):  # 12 попыток по 5 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
             if response.status_code == 200:
                 messages = response.json().get("hydra:member", [])
                 if not messages:
                     print("Писем нет, ожидаем...")
-                    time.sleep(10)
+                    time.sleep(5)
                     continue
                 
                 print(f"Найдено {len(messages)} писем.")
@@ -227,17 +225,15 @@ def confirm_email(email, password):
                             html_body = email_data.get("html", "")
                             text_body = email_data.get("text", "")
 
-                            # Ищем ссылку в HTML или текстовом теле письма
+                            # Ищем ссылку в HTML
                             confirm_link = None
-
-                            # Поиск в HTML
                             if html_body:
                                 soup = BeautifulSoup(html_body, "html.parser")
-                                link = soup.find("a", href=re.compile(r"https://hidemy\.esclick\.me/"))
+                                link = soup.find("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
                                 if link:
                                     confirm_link = link["href"]
-                            
-                            # Если в HTML не нашли, ищем в текстовом теле
+
+                            # Если не нашли в HTML, ищем в текстовой части
                             if not confirm_link and text_body:
                                 match = re.search(r"https://hidemy\.esclick\.me/\S+", text_body)
                                 if match:
@@ -268,8 +264,7 @@ def confirm_email(email, password):
     except Exception as e:
         print(f"Ошибка при подтверждении почты: {e}")
         return False
-
-
+        
 def get_test_code(email, password):
     try:
         inbox = get_inbox(email, password)
