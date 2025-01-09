@@ -271,7 +271,7 @@ def confirm_email(email, password):
         print(f"Ошибка при подтверждении почты: {e}")
         return False
         
-def get_test_code(email, password, telegram_token, chat_id):
+def get_test_code(email, password):
     try:
         token = get_token(email, password)
         if not token:
