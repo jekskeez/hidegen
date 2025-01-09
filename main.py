@@ -1,4 +1,5 @@
 import logging
+import uuid
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -16,8 +17,13 @@ logger = logging.getLogger(__name__)
 # Функция получения временного email через Mail.tm
 def get_temp_email():
     url = 'https://api.mail.tm/accounts'
+    
+    # Генерируем уникальное имя для почты
+    random_name = str(uuid.uuid4().hex)  # Генерация уникального имени с помощью UUID
+    email_address = f"{random_name}@mail.tm"  # Пример генерации уникального email
+
     payload = {
-        "address": "testuser",  # Используйте уникальное имя или генерируйте его
+        "address": email_address,
         "password": "password"
     }
 
@@ -43,7 +49,6 @@ if email:
     print(f"Временный email: {email}, Токен: {token}")
 else:
     print("Не удалось получить временный email.")
-
 # Настройка драйвера Selenium
 def setup_driver():
     options = Options()
