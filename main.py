@@ -28,7 +28,9 @@ async def get_token(address, password):
                 token_data = await response.json()
                 return token_data['token']
             else:
+                # Логируем детальную информацию о проблеме
                 logger.error(f"Ошибка получения токена. Код ошибки: {response.status}")
+                logger.error(f"Ответ от сервера: {await response.text()}")  # Выводим тело ответа от сервера
                 return None
 
 # Функция получения списка доменов
