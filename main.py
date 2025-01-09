@@ -11,7 +11,9 @@ mail_client = MailTm()
 
 # Функция для получения случайного адреса
 def get_random_email():
-    return mail_client.random_username()
+    # Используем метод create() для получения нового почтового ящика
+    email_info = mail_client.create()  # Этот метод создает новый адрес
+    return email_info['email']  # Возвращаем почту из созданной информации
 
 # Функция для получения почты
 def get_inbox(email):
