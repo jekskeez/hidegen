@@ -89,7 +89,7 @@ def get_token(email, password):
         return None
 
 
-def get_inbox(email, password, retries=10, delay=5):
+def get_inbox(email, password, retries=20, delay=10):
     """Получение писем из почтового ящика."""
     token = get_token(email, password)
     if not token:
