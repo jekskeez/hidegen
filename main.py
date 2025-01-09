@@ -7,6 +7,7 @@ from pymailtm import MailTm
 import requests
 import random
 import string
+import time
 
 # Убедитесь, что директория для базы данных MailTm существует
 os.makedirs(os.path.expanduser("~/.pymailtm"), exist_ok=True)
