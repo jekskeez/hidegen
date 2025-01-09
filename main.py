@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Установим логирование
@@ -69,37 +69,37 @@ def check_email_for_code(token):
     return None
 
 # Обработчик команды /get в Telegram
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
     
     # Получаем временный email
     email, token = get_temp_email()
     
     if email is None:
-        update.message.reply_text("Произошла ошибка при получении временного email.")
+        await update.message.reply_text("Произошла ошибка при получении временного email.")
         return
     
-    update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
+    await update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
 
     # Пройдем регистрацию и получим код
     code = get_code_from_site(email)
     
     if code:
-        update.message.reply_text(f"Ваш тестовый код: {code}")
+        await update.message.reply_text(f"Ваш тестовый код: {code}")
     else:
-        update.message.reply_text("Произошла ошибка при получении кода.")
+        await update.message.reply_text("Произошла ошибка при получении кода.")
 
 # Основная функция для запуска бота
-def main():
+async def main():
     # Получаем токен для Telegram-бота
-    updater = Updater("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI")
+    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
     
     # Регистрируем обработчик команд
-    updater.dispatcher.add_handler(CommandHandler("get", start))
+    application.add_handler(CommandHandler("get", start))
     
     # Запускаем бота
-    updater.start_polling()
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
