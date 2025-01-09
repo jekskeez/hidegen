@@ -105,16 +105,23 @@ def register_on_site(email):
         response = session.post(demo_url, data=form_data)
 
         # Проверяем результат
-        if response.status_code == 200 and 'success' in response.url:
-            print(f"Почта {email} успешно отправлена.")
-            return email
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            title_text = soup.find('title').get_text(strip=True)
+
+            if "Ваш код выслан на почту" in title_text:
+                print(f"Почта {email} успешно отправлена.")
+                return email
+            else:
+                print(f"Ответ сервера не подтверждает успешную отправку: {title_text}")
+                return None
         else:
             print(f"Ошибка при отправке почты. Код ответа: {response.status_code}")
-            print(f"Ответ сервера: {response.text}")
             return None
     except Exception as e:
         print(f"Ошибка при регистрации: {e}")
         return None
+
 
 
 def confirm_email(email):
