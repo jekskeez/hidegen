@@ -225,15 +225,10 @@ def confirm_email(email, password):
                     email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
                     if email_response.status_code == 200:
                         email_data = email_response.json()
-                        print(f"Содержимое письма (JSON): {email_data}")
 
                         # Извлекаем текст и HTML из письма
                         text_body = email_data.get("text", "")
                         html_body = email_data.get("html", [""])[0]
-
-                        # Выводим содержимое письма
-                        print(f"Текст письма:\n{text_body}")
-                        print(f"HTML письма:\n{html_body}")
 
                         # Ищем ссылку в HTML
                         confirm_link = None
