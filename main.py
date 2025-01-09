@@ -323,15 +323,25 @@ def get_test_code(email, password):
 
 
 async def start(update: Update, context):
-    await update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
+    await update.message.reply_text("Привет! Я могу регистрировать для тебя тестовые коды для hidemyname VPN. Отправь команду /get, чтобы получить тестовый код.")
 
 async def get_test_code_telegram(update: Update, context):
     try:
+        # Сообщение о времени ожидания
+        await update.message.reply_text("Ваш код будет готов примерно через 2 минуты. Пожалуйста, подождите...")
+
         # Генерация почты и пароля
-        email, password = create_email()  # Ожидаем оба значения
+        email, password = create_email()
         if not email or not password:
             await update.message.reply_text("Ошибка при создании почты. Попробуйте позже.")
             return
+
+        # Отправка почты, пароля и ссылки пользователю
+        await update.message.reply_text(
+            f"Почта: {email}\n"
+            f"Пароль: {password}\n"
+            f"Вы можете проверить свою почту здесь: https://mail.tm/"
+        )
 
         print(f"Созданная почта: {email}")
         print(f"Используемый пароль: {password}")
@@ -342,12 +352,12 @@ async def get_test_code_telegram(update: Update, context):
             return
 
         # Подтверждение почты
-        if not confirm_email(email, password):  # Передаём оба аргумента
+        if not confirm_email(email, password):
             await update.message.reply_text("Не удалось подтвердить почту.")
             return
 
         # Получение тестового кода
-        test_code = get_test_code(email, password)  # Передаём оба аргумента
+        test_code = get_test_code(email, password)
         if test_code:
             await update.message.reply_text(f"Ваш тестовый код: {test_code}")
         else:
@@ -356,7 +366,6 @@ async def get_test_code_telegram(update: Update, context):
         print(f"Ошибка в процессе получения тестового кода: {e}")
         await update.message.reply_text("Произошла ошибка. Попробуйте позже.")
 
-        
 def main():
     TELEGRAM_TOKEN = '7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po'
 
