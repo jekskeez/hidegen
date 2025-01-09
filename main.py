@@ -83,6 +83,8 @@ def get_token(email, password):
         else:
             print(f"Ошибка авторизации: {auth_response.status_code}")
             print(f"Ответ сервера: {auth_response.text}")
+            print(f"Созданная почта: {email}")
+            print(f"Используемый пароль: {password}")
             return None
     except Exception as e:
         print(f"Ошибка при получении токена: {e}")
