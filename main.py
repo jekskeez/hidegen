@@ -15,17 +15,34 @@ logger = logging.getLogger(__name__)
 
 # Функция получения временного email через Mail.tm
 def get_temp_email():
-    response = requests.post('https://api.mail.tm/accounts', json={
-        "address": "testuser", 
+    url = 'https://api.mail.tm/accounts'
+    payload = {
+        "address": "testuser",  # Используйте уникальное имя или генерируйте его
         "password": "password"
-    })
-    if response.status_code == 200:
-        email_data = response.json()
-        email = email_data['address']
-        token = email_data['token']
-        return email, token
-    else:
+    }
+
+    try:
+        response = requests.post(url, json=payload)
+        print("Ответ от API:", response.text)  # Выводим ответ от API для отладки
+
+        if response.status_code == 200:
+            email_data = response.json()
+            email = email_data['address']
+            token = email_data['token']
+            return email, token
+        else:
+            print(f"Ошибка при создании почты. Код ошибки: {response.status_code}")
+            return None, None
+    except requests.exceptions.RequestException as e:
+        print(f"Произошла ошибка при запросе к API Mail.tm: {e}")
         return None, None
+
+# Тестируем функцию получения почты
+email, token = get_temp_email()
+if email:
+    print(f"Временный email: {email}, Токен: {token}")
+else:
+    print("Не удалось получить временный email.")
 
 # Настройка драйвера Selenium
 def setup_driver():
