@@ -18,16 +18,30 @@ def generate_username(length=8):
     """Генерация случайного имени пользователя."""
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
+def get_available_domains():
+    """Получение списка доступных доменов с помощью API Mail.tm."""
+    try:
+        response = requests.get("https://api.mail.tm/domains")
+        if response.status_code == 200:
+            data = response.json()
+            return [domain['domain'] for domain in data['hydra:member']]
+        else:
+            print(f"Не удалось получить список доменов. Код ответа: {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Ошибка при получении доменов: {e}")
+        return []
+
 def create_email():
     try:
-        # Получаем список доступных доменов
-        domains = mail_client.get_domains()
+        # Получаем список доступных доменов через API
+        domains = get_available_domains()
         if not domains:
-            print("Не удалось получить список доменов.")
+            print("Список доменов пуст.")
             return None
         
         # Выбираем первый доступный домен
-        domain = domains[0]['domain']
+        domain = domains[0]
         username = generate_username()
         address = f"{username}@{domain}"
 
