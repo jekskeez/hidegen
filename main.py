@@ -68,27 +68,25 @@ def create_email():
         return None
 
 def get_token(email, password):
-    """Получение токена авторизации."""
-    try:
-        login_payload = {
-            "address": email,
-            "password": password
-        }
-        auth_response = requests.post("https://api.mail.tm/token", json=login_payload)
+    """Получение токена для авторизации."""
+    print(f"Получение токена для: {email}")
+    print(f"Используемый пароль: {password}")
+    payload = {"address": email, "password": password}
 
-        if auth_response.status_code == 200:
-            token = auth_response.json().get("token")
-            print(f"Успешно получен токен для {email}")
+    try:
+        response = requests.post("https://api.mail.tm/token", json=payload)
+        if response.status_code == 200:
+            token = response.json().get("token")
+            print(f"Токен успешно получен: {token}")
             return token
         else:
-            print(f"Ошибка авторизации: {auth_response.status_code}")
-            print(f"Ответ сервера: {auth_response.text}")
-            print(f"Созданная почта: {email}")
-            print(f"Используемый пароль: {password}")
+            print(f"Ошибка авторизации: {response.status_code}")
+            print(f"Ответ сервера: {response.text}")
             return None
     except Exception as e:
-        print(f"Ошибка при получении токена: {e}")
+        print(f"Ошибка при запросе токена: {e}")
         return None
+
 
 def get_inbox(email, password, retries=10, delay=5):
     """Получение писем из почтового ящика."""
@@ -229,27 +227,32 @@ async def start(update: Update, context):
     await update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
 
 async def get_test_code_telegram(update: Update, context):
-    email = create_email()
-    if email is None:
-        await update.message.reply_text("Произошла ошибка при генерации почты.")
+    # Генерация почты и пароля
+    email, password = create_email()
+    print(f"Созданная почта: {email}")
+    print(f"Используемый пароль: {password}")
+
+    if not email or not password:
+        await update.message.reply_text("Ошибка при создании почты. Попробуйте позже.")
         return
 
-    # Передайте пароль, используемый при создании email
-    password = generate_username(12)  # Убедитесь, что этот пароль совпадает с тем, который использовался в create_email
-
+    # Регистрация на сайте
     if not register_on_site(email):
         await update.message.reply_text("Ошибка при регистрации на сайте.")
         return
 
-    if not confirm_email(email, password):  # Передаём оба аргумента
+    # Подтверждение почты
+    if not confirm_email(email, password):  # Передаём пароль
         await update.message.reply_text("Не удалось подтвердить почту.")
         return
 
-    test_code = get_test_code(email, password)  # Передаём оба аргумента
+    # Получение тестового кода
+    test_code = get_test_code(email, password)  # Передаём пароль
     if test_code:
         await update.message.reply_text(f"Ваш тестовый код: {test_code}")
     else:
         await update.message.reply_text("Не удалось получить тестовый код.")
+
 
 
 
