@@ -67,27 +67,51 @@ def create_email():
         print(f"Ошибка при создании почты: {e}")
         return None
 
-def get_inbox(email, retries=10, delay=5):
-    """Получение писем с ожиданием."""
+def get_inbox(email, password, retries=10, delay=5):
+    """Получение писем для указанного email с ожиданием."""
     try:
+        # Авторизация на сервере
+        login_payload = {
+            "address": email,
+            "password": password
+        }
+        auth_response = requests.post("https://api.mail.tm/token", json=login_payload)
+
+        if auth_response.status_code != 200:
+            print(f"Ошибка авторизации: {auth_response.status_code}")
+            print(f"Ответ сервера: {auth_response.text}")
+            return []
+
+        token = auth_response.json()["token"]
+
+        # Заголовок авторизации
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Пытаемся получить сообщения с ожиданием
         for attempt in range(retries):
             print(f"Попытка {attempt + 1}/{retries} получить письма...")
-            account = mail_client.get_account(email)  # Получаем аккаунт
-            inbox = account.get_messages()  # Получаем письма
+            messages_response = requests.get("https://api.mail.tm/messages", headers=headers)
 
-            if inbox:
-                print("Письма получены.")
-                return inbox
-            else:
-                print(f"Нет писем. Ожидание {delay} секунд...")
+            if messages_response.status_code != 200:
+                print(f"Ошибка при получении писем: {messages_response.status_code}")
+                print(f"Ответ сервера: {messages_response.text}")
                 time.sleep(delay)
+                continue
+
+            messages_data = messages_response.json().get("hydra:member", [])
+            if messages_data:
+                print(f"Найдены письма: {len(messages_data)}")
+                return messages_data
+
+            print(f"Нет писем. Ожидание {delay} секунд...")
+            time.sleep(delay)
 
         print("Письма не пришли за указанное время.")
         return []
     except Exception as e:
         print(f"Ошибка при получении писем: {e}")
         return []
-
+        
 demo_url = 'https://hidenx.name/demo/'
 
 def register_on_site(email):
@@ -165,13 +189,13 @@ def register_on_site(email):
         print(f"Ошибка при регистрации: {e}")
         return None
 
-def confirm_email(email):
+def confirm_email(email, password):
     try:
-        inbox = get_inbox(email)
+        inbox = get_inbox(email, password)
 
         for email_data in inbox:
             if "Подтвердите e-mail" in email_data['subject']:
-                confirm_url = email_data['intro'][0]
+                confirm_url = email_data['intro']
                 response = requests.get(confirm_url)
                 if response.status_code == 200:
                     print("Почта подтверждена.")
@@ -182,13 +206,13 @@ def confirm_email(email):
         print(f"Ошибка при подтверждении почты: {e}")
         return False
 
-def get_test_code(email):
+def get_test_code(email, password):
     try:
-        inbox = get_inbox(email)
+        inbox = get_inbox(email, password)
 
         for email_data in inbox:
             if "Ваш код для тестового доступа к сервису" in email_data['subject']:
-                code = email_data['intro'][0]
+                code = email_data['intro']
                 test_code = code.split(":")[1].strip()
                 print(f"Тестовый код: {test_code}")
                 return test_code
