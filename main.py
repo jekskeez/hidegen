@@ -4,6 +4,7 @@ from pymailtm import MailTm
 from telegram import Update
 from telegram.ext import CommandHandler, ApplicationBuilder
 from bs4 import BeautifulSoup
+import asyncio
 
 # Инициализация клиента для работы с Mail.tm
 mail_client = MailTm()
@@ -99,7 +100,8 @@ async def get_test_code_telegram(update: Update, context):
     else:
         await update.message.reply_text("Не удалось получить тестовый код.")
 
-async def main():
+# Используем текущий цикл событий
+def main():
     # Вставьте ваш токен бота
     TELEGRAM_TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
     
@@ -111,8 +113,9 @@ async def main():
     application.add_handler(CommandHandler("get", get_test_code_telegram))
     
     # Запуск бота
-    await application.run_polling()
+    application.run_polling()
 
+# Вместо asyncio.run, используем get_event_loop для запуска в текущем цикле
 if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.create_task(main())
