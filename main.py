@@ -5,6 +5,8 @@ from telegram.ext import CommandHandler, ApplicationBuilder
 from bs4 import BeautifulSoup
 from pymailtm import MailTm
 import requests
+import random
+import string
 
 # Убедитесь, что директория для базы данных MailTm существует
 os.makedirs(os.path.expanduser("~/.pymailtm"), exist_ok=True)
@@ -12,9 +14,25 @@ os.makedirs(os.path.expanduser("~/.pymailtm"), exist_ok=True)
 # Инициализация клиента для работы с Mail.tm
 mail_client = MailTm()
 
+def generate_username(length=8):
+    """Генерация случайного имени пользователя."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
+
 def create_email():
     try:
-        account = mail_client._open_account()
+        # Получаем список доступных доменов
+        domains = mail_client.get_domains()
+        if not domains:
+            print("Не удалось получить список доменов.")
+            return None
+        
+        # Выбираем первый доступный домен
+        domain = domains[0]['domain']
+        username = generate_username()
+        address = f"{username}@{domain}"
+
+        # Создаем аккаунт
+        account = mail_client.create_account(address, password=generate_username(12))
         if account:
             email = account['address']
             print(f"Почта успешно создана: {email}")
@@ -22,11 +40,8 @@ def create_email():
         else:
             print("Не удалось создать почту.")
             return None
-    except FileNotFoundError as e:
-        print(f"Ошибка: {e}")
-        return None
     except Exception as e:
-        print(f"Общая ошибка: {e}")
+        print(f\"Ошибка при создании почты: {e}\")
         return None
 
 def get_inbox(email):
