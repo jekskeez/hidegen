@@ -43,7 +43,7 @@ async def start(update: Update, context: CallbackContext) -> None:
 # Основная функция для запуска бота
 async def main():
     # Получаем токен для Telegram-бота
-    application = Application.builder().token("YOUR_BOT_TOKEN").build()
+    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
     
     # Регистрируем обработчик команд
     application.add_handler(CommandHandler("get", start))
