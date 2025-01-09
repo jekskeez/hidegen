@@ -9,12 +9,15 @@ logger = logging.getLogger(__name__)
 
 # Настройка Mail.tm с использованием pymailtm
 def create_temp_email():
-    # Инициализация клиента с логином и паролем
-    client = MailTm(email="your_email@example.com", password="your_password")
-    
+    # Создаем объект MailTm
+    client = MailTm()
+
+    # Аутентификация: Логин и пароль
+    client.login("your_email@example.com", "your_password")  # Замените на свои учетные данные
+
     # Получаем список доступных доменов
     domains = client.get_domains()
-    
+
     if domains:
         # Используем первый домен из списка
         domain = domains[0]['domain']
