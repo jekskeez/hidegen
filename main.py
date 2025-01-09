@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Установим логирование
@@ -114,8 +114,8 @@ def check_email_for_code(token):
     return None
 
 # Обработчик команды /get в Telegram
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
     
     # Получаем временный email
     address = "your_email@example.com"  # Укажите свою почту для получения токена
@@ -127,33 +127,33 @@ def start(update: Update, context: CallbackContext) -> None:
         if domain:
             email = create_temp_email(token, domain)
             if email:
-                update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
+                await update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
                 
                 # Пройдем регистрацию и получим код
                 code = get_code_from_site(email)
                 
                 if code:
-                    update.message.reply_text(f"Ваш тестовый код: {code}")
+                    await update.message.reply_text(f"Ваш тестовый код: {code}")
                 else:
-                    update.message.reply_text("Произошла ошибка при получении кода.")
+                    await update.message.reply_text("Произошла ошибка при получении кода.")
             else:
-                update.message.reply_text("Не удалось создать временный email.")
+                await update.message.reply_text("Не удалось создать временный email.")
         else:
-            update.message.reply_text("Не удалось получить домен.")
+            await update.message.reply_text("Не удалось получить домен.")
     else:
-        update.message.reply_text("Не удалось получить токен.")
+        await update.message.reply_text("Не удалось получить токен.")
 
 # Основная функция для запуска бота
-def main():
+async def main():
     # Получаем токен для Telegram-бота
-    updater = Updater("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI")
+    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
     
     # Регистрируем обработчик команд
-    updater.dispatcher.add_handler(CommandHandler("get", start))
+    application.add_handler(CommandHandler("get", start))
     
     # Запускаем бота
-    updater.start_polling()
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
