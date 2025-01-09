@@ -41,7 +41,7 @@ def create_email():
             print("Не удалось создать почту.")
             return None
     except Exception as e:
-        print(f\"Ошибка при создании почты: {e}\")
+        print(f"Ошибка при создании почты: {e}")
         return None
 
 def get_inbox(email):
