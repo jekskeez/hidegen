@@ -203,13 +203,13 @@ def confirm_email(email, password):
         headers = {"Authorization": f"Bearer {token}"}
 
         # Ожидание писем (до 60 секунд, проверяя каждые 5 секунд)
-        for _ in range(12):  # 12 попыток по 5 секунд
+        for _ in range(20):  # 12 попыток по 5 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
             if response.status_code == 200:
                 messages = response.json().get("hydra:member", [])
                 if not messages:
                     print("Писем нет, ожидаем...")
-                    time.sleep(5)
+                    time.sleep(10)
                     continue
                 
                 print(f"Найдено {len(messages)} писем.")
