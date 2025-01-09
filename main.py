@@ -77,30 +77,45 @@ def get_inbox(email):
 demo_url = 'https://hidenx.name/demo/'
 
 def register_on_site(email):
+    """Регистрация на сайте с использованием указанной почты."""
     try:
+        # Создаем сессию и заходим на страницу
         session = requests.Session()
         response = session.get(demo_url)
 
         if response.status_code != 200:
-            print("Не удалось загрузить страницу")
+            print(f"Не удалось загрузить страницу. Код ответа: {response.status_code}")
             return None
 
+        # Парсим HTML-страницу
         soup = BeautifulSoup(response.text, 'html.parser')
-        hidden_inputs = soup.find_all('input', type='hidden')
-        form_data = {input['name']: input['value'] for input in hidden_inputs}
-        form_data['email'] = email
 
+        # Находим все скрытые поля формы
+        hidden_inputs = soup.find_all('input', type='hidden')
+        form_data = {input['name']: input.get('value', '') for input in hidden_inputs}
+
+        # Добавляем поле для ввода почты
+        if soup.find('input', {'name': 'demo_mail'}):
+            form_data['demo_mail'] = email
+        else:
+            print("Поле для ввода почты не найдено.")
+            return None
+
+        # Отправляем POST-запрос с данными формы
         response = session.post(demo_url, data=form_data)
 
-        if 'success' in response.url:
+        # Проверяем результат
+        if response.status_code == 200 and 'success' in response.url:
             print(f"Почта {email} успешно отправлена.")
             return email
         else:
-            print("Ошибка при отправке почты.")
+            print(f"Ошибка при отправке почты. Код ответа: {response.status_code}")
+            print(f"Ответ сервера: {response.text}")
             return None
     except Exception as e:
         print(f"Ошибка при регистрации: {e}")
         return None
+
 
 def confirm_email(email):
     try:
