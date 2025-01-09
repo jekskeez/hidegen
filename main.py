@@ -146,7 +146,7 @@ def start(update: Update, context: CallbackContext) -> None:
 # Основная функция для запуска бота
 def main():
     # Получаем токен для Telegram-бота
-    updater = Updater("YOUR_BOT_TOKEN")
+    updater = Updater("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI")
     
     # Регистрируем обработчик команд
     updater.dispatcher.add_handler(CommandHandler("get", start))
