@@ -54,6 +54,7 @@ def create_email():
         response = requests.post("https://api.mail.tm/accounts", json=payload)
         if response.status_code == 201:
             print(f"Почта успешно создана: {address}")
+            print(f"Результат create_email: {address}, {password}")
             return address
         elif response.status_code == 422:
             print("Ошибка 422: Некорректные данные (например, имя пользователя или домен).")
@@ -187,30 +188,19 @@ async def start(update: Update, context):
     await update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
 
 async def get_test_code_telegram(update: Update, context):
-    # Создаем почту и генерируем пароль
-    email, password = create_email()
-    if email is None or password is None:
+    email = create_email()
+    if email is None:
         await update.message.reply_text("Произошла ошибка при генерации почты.")
         return
 
-    # Отправляем почту и пароль пользователю
-    await update.message.reply_text(
-        f"Сгенерированная почта: {email}\n"
-        f"Сгенерированный пароль: {password}\n\n"
-        f"Регистрация будет произведена на сайте."
-    )
-
-    # Регистрируем почту на сайте
     if not register_on_site(email):
         await update.message.reply_text("Ошибка при регистрации на сайте.")
         return
 
-    # Подтверждаем почту
     if not confirm_email(email):
         await update.message.reply_text("Не удалось подтвердить почту.")
         return
 
-    # Получаем тестовый код
     test_code = get_test_code(email)
     if test_code:
         await update.message.reply_text(f"Ваш тестовый код: {test_code}")
