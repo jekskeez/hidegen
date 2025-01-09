@@ -206,13 +206,13 @@ def confirm_email(email, password):
 
         headers = {"Authorization": f"Bearer {token}"}
 
-        for _ in range(20):  # 12 попыток по 5 секунд
+        for _ in range(12):  # 12 попыток по 5 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
             if response.status_code == 200:
                 messages = response.json().get("hydra:member", [])
                 if not messages:
                     print("Писем нет, ожидаем...")
-                    time.sleep(10)
+                    time.sleep(5)
                     continue
 
                 print(f"Найдено {len(messages)} писем.")
@@ -239,13 +239,13 @@ def confirm_email(email, password):
                         confirm_link = None
                         if html_body:
                             soup = BeautifulSoup(html_body, "html.parser")
-                            link = soup.find("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
+                            link = soup.find("a", href=re.compile(r"^https://secure\.esputnik\.com/"))
                             if link:
                                 confirm_link = link["href"]
 
                         # Если не нашли в HTML, ищем в текстовой части
                         if not confirm_link and text_body:
-                            match = re.search(r"https://hidemy\.esclick\.me/\S+", text_body)
+                            match = re.search(r"https://secure\.esputnik\.com/\S+", text_body)
                             if match:
                                 confirm_link = match.group(0)
 
@@ -274,7 +274,6 @@ def confirm_email(email, password):
     except Exception as e:
         print(f"Ошибка при подтверждении почты: {e}")
         return False
-
         
 def get_test_code(email, password):
     try:
