@@ -8,7 +8,6 @@ import requests
 import random
 import string
 import time
-import re
 
 # Убедитесь, что директория для базы данных MailTm существует
 os.makedirs(os.path.expanduser("~/.pymailtm"), exist_ok=True)
@@ -192,6 +191,9 @@ def register_on_site(email):
     except Exception as e:
         print(f"Ошибка при регистрации: {e}")
         return None
+
+import re
+from bs4 import BeautifulSoup
 
 def confirm_email(email, password):
     try:
