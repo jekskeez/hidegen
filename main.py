@@ -271,16 +271,47 @@ def confirm_email(email, password):
         print(f"Ошибка при подтверждении почты: {e}")
         return False
         
-def get_test_code(email, password):
+def get_test_code(email, password, telegram_token, chat_id):
     try:
-        inbox = get_inbox(email, password)
+        token = get_token(email, password)
+        if not token:
+            print("Не удалось авторизоваться. Проверьте почту и пароль.")
+            return None
 
-        for email_data in inbox:
-            if "Ваш код для тестового доступа к сервису" in email_data['subject']:
-                code = email_data['intro']
-                test_code = code.split(":")[1].strip()
-                print(f"Тестовый код: {test_code}")
-                return test_code
+        headers = {"Authorization": f"Bearer {token}"}
+        session = requests.Session()
+
+        for _ in range(20):  # 20 попыток по 8 секунд
+            response = requests.get("https://api.mail.tm/messages", headers=headers)
+            if response.status_code == 200:
+                messages = response.json().get("hydra:member", [])
+                if not messages:
+                    print("Писем нет, ожидаем...")
+                    time.sleep(8)
+                    continue
+
+                for message in messages:
+                    message_id = message["id"]
+                    subject = message["subject"]
+
+                    if "Ваш код для тестового доступа к сервису" in subject:
+                        print(f"Письмо с тестовым кодом найдено. ID: {message_id}")
+
+                        # Получаем содержимое письма
+                        email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
+                        if email_response.status_code == 200:
+                            email_data = email_response.json()
+                            intro = email_data.get("intro", "")
+
+                            # Извлекаем тестовый код
+                            test_code = intro.split(":")[1].strip()
+                            print(f"Тестовый код: {test_code}")
+                        else:
+                            print(f"Ошибка при получении данных письма: {email_response.status_code}")
+            else:
+                print(f"Ошибка при получении писем. Код ответа: {response.status_code}")
+                return None
+        print("Письмо с тестовым кодом не пришло в течение 160 секунд.")
         return None
     except Exception as e:
         print(f"Ошибка при получении тестового кода: {e}")
