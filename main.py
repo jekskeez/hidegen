@@ -1,8 +1,8 @@
 import time
 import requests
 from pymailtm import MailTm
-from telegram import Bot, Update
-from telegram.ext import CommandHandler, Updater
+from telegram import Update
+from telegram.ext import CommandHandler, ApplicationBuilder
 from bs4 import BeautifulSoup
 
 # Инициализация клиента для работы с Mail.tm
@@ -77,42 +77,42 @@ def get_test_code(email):
 
 # Телеграм боты и обработка команд
 
-def start(update, context):
-    update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
+async def start(update: Update, context):
+    await update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
 
-def get_test_code_telegram(update, context):
+async def get_test_code_telegram(update: Update, context):
     # Генерация почты и получение кода
     email = get_demo_code()
     if email is None:
-        update.message.reply_text("Произошла ошибка при генерации почты.")
+        await update.message.reply_text("Произошла ошибка при генерации почты.")
         return
 
     # Подтверждение почты
     if not confirm_email(email):
-        update.message.reply_text("Не удалось подтвердить почту.")
+        await update.message.reply_text("Не удалось подтвердить почту.")
         return
     
     # Получаем тестовый код
     test_code = get_test_code(email)
     if test_code:
-        update.message.reply_text(f"Ваш тестовый код: {test_code}")
+        await update.message.reply_text(f"Ваш тестовый код: {test_code}")
     else:
-        update.message.reply_text("Не удалось получить тестовый код.")
+        await update.message.reply_text("Не удалось получить тестовый код.")
 
-def main():
+async def main():
     # Вставьте ваш токен бота
     TELEGRAM_TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
     
     # Инициализация бота
-    updater = Updater(TELEGRAM_TOKEN, use_context=True)
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     # Регистрация обработчиков команд
-    updater.dispatcher.add_handler(CommandHandler("start", start))
-    updater.dispatcher.add_handler(CommandHandler("get", get_test_code_telegram))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("get", get_test_code_telegram))
     
     # Запуск бота
-    updater.start_polling()
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
