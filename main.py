@@ -1,6 +1,6 @@
 import logging
-import requests
 import uuid
+import aiohttp
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -15,43 +15,43 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Функция для получения токена
-def get_token(address, password):
+async def get_token(address, password):
     url = 'https://api.mail.tm/token'
     payload = {
         "address": address,
         "password": password
     }
-
-    response = requests.post(url, json=payload)
     
-    if response.status_code == 200:
-        token_data = response.json()
-        return token_data['token']
-    else:
-        print(f"Ошибка получения токена. Код ошибки: {response.status_code}")
-        return None
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload) as response:
+            if response.status == 200:
+                token_data = await response.json()
+                return token_data['token']
+            else:
+                logger.error(f"Ошибка получения токена. Код ошибки: {response.status}")
+                return None
 
 # Функция получения списка доменов
-def get_domains(token):
+async def get_domains(token):
     url = 'https://api.mail.tm/domains'
     headers = {"Authorization": f"Bearer {token}"}
     
-    response = requests.get(url, headers=headers)
-    
-    if response.status_code == 200:
-        domains_data = response.json()
-        if domains_data["hydra:member"]:
-            domain = domains_data["hydra:member"][0]["domain"]
-            return domain
-        else:
-            print("Нет доступных доменов.")
-            return None
-    else:
-        print(f"Ошибка получения доменов. Код ошибки: {response.status_code}")
-        return None
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                domains_data = await response.json()
+                if domains_data["hydra:member"]:
+                    domain = domains_data["hydra:member"][0]["domain"]
+                    return domain
+                else:
+                    logger.error("Нет доступных доменов.")
+                    return None
+            else:
+                logger.error(f"Ошибка получения доменов. Код ошибки: {response.status}")
+                return None
 
 # Функция создания временной почты
-def create_temp_email(token, domain):
+async def create_temp_email(token, domain):
     random_name = str(uuid.uuid4().hex)  # Генерация уникального имени
     email_address = f"{random_name}@{domain}"
     
@@ -62,15 +62,15 @@ def create_temp_email(token, domain):
     }
     headers = {"Authorization": f"Bearer {token}"}
     
-    response = requests.post(url, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        email_data = response.json()
-        email = email_data['address']
-        return email
-    else:
-        print(f"Ошибка создания почты. Код ошибки: {response.status_code}")
-        return None
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload, headers=headers) as response:
+            if response.status == 200:
+                email_data = await response.json()
+                email = email_data['address']
+                return email
+            else:
+                logger.error(f"Ошибка создания почты. Код ошибки: {response.status}")
+                return None
 
 # Настройка драйвера Selenium
 def setup_driver():
@@ -101,16 +101,20 @@ def get_code_from_site(email):
     return "82048453753814"  # Пример кода
 
 # Получение письма через Mail.tm API
-def check_email_for_code(token):
-    response = requests.get(f'https://api.mail.tm/messages', headers={'Authorization': f'Bearer {token}'})
-    if response.status_code == 200:
-        emails = response.json()
-        for email in emails:
-            if "Ваш код для тестового доступа" in email['subject']:
-                # Извлекаем код из письма
-                content = email['content']
-                code = content.split(":")[1].strip()  # Получаем тестовый код
-                return code
+async def check_email_for_code(token):
+    url = 'https://api.mail.tm/messages'
+    headers = {'Authorization': f'Bearer {token}'}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                emails = await response.json()
+                for email in emails:
+                    if "Ваш код для тестового доступа" in email['subject']:
+                        # Извлекаем код из письма
+                        content = email['content']
+                        code = content.split(":")[1].strip()  # Получаем тестовый код
+                        return code
     return None
 
 # Обработчик команды /get в Telegram
@@ -120,12 +124,12 @@ async def start(update: Update, context: CallbackContext) -> None:
     # Получаем временный email
     address = "your_email@example.com"  # Укажите свою почту для получения токена
     password = "your_password"  # Укажите пароль для этой почты
-    token = get_token(address, password)
+    token = await get_token(address, password)
     
     if token:
-        domain = get_domains(token)
+        domain = await get_domains(token)
         if domain:
-            email = create_temp_email(token, domain)
+            email = await create_temp_email(token, domain)
             if email:
                 await update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
                 
