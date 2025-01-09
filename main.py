@@ -197,6 +197,11 @@ def register_on_site(email):
 import re
 from bs4 import BeautifulSoup
 
+import requests
+from bs4 import BeautifulSoup
+import re
+import time
+
 def confirm_email(email, password):
     try:
         token = get_token(email, password)
@@ -213,7 +218,7 @@ def confirm_email(email, password):
                 messages = response.json().get("hydra:member", [])
                 if not messages:
                     print("Писем нет, ожидаем...")
-                    time.sleep(10)
+                    time.sleep(8)
                     continue
 
                 print(f"Найдено {len(messages)} писем.")
@@ -226,29 +231,17 @@ def confirm_email(email, password):
                     email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
                     if email_response.status_code == 200:
                         email_data = email_response.json()
-                        print(f"Содержимое письма (JSON): {email_data}")
 
-                        # Извлекаем текст и HTML из письма
-                        text_body = email_data.get("text", "")
+                        # Извлекаем HTML из письма
                         html_body = email_data.get("html", [""])[0]
 
-                        # Выводим содержимое письма
-                        print(f"Текст письма:\n{text_body}")
-                        print(f"HTML письма:\n{html_body}")
-
-                        # Ищем ссылку в HTML
+                        # Ищем ссылку в HTML по маске https://hidemy.esclick.me/
                         confirm_link = None
                         if html_body:
                             soup = BeautifulSoup(html_body, "html.parser")
-                            link = soup.find("a", href=re.compile(r"^https://secure\.esputnik\.com/"))
+                            link = soup.find("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
                             if link:
                                 confirm_link = link["href"]
-
-                        # Если не нашли в HTML, ищем в текстовой части
-                        if not confirm_link and text_body:
-                            match = re.search(r"https://secure\.esputnik\.com/\S+", text_body)
-                            if match:
-                                confirm_link = match.group(0)
 
                         if confirm_link:
                             print(f"Ссылка для подтверждения: {confirm_link}")
@@ -271,6 +264,12 @@ def confirm_email(email, password):
             else:
                 print(f"Ошибка при получении писем. Код ответа: {response.status_code}")
                 return False
+
+        print("Письмо не пришло в течение 60 секунд.")
+        return False
+    except Exception as e:
+        print(f"Ошибка при подтверждении почты: {e}")
+        return False
 
         print("Письмо не пришло в течение 60 секунд.")
         return False
