@@ -9,11 +9,15 @@ import asyncio
 # Инициализация клиента для работы с Mail.tm
 mail_client = MailTm()
 
-# Функция для получения случайного адреса
+# Функция для получения случайного почтового адреса
 def get_random_email():
-    # Используем метод create() для получения нового почтового ящика
-    email_info = mail_client.create()  # Этот метод создает новый адрес
-    return email_info['email']  # Возвращаем почту из созданной информации
+    # Используем get_account для получения информации о почте
+    account = mail_client.get_account()
+    if account and 'email' in account:
+        return account['email']  # Возвращаем почту из полученного аккаунта
+    else:
+        print("Не удалось получить почту.")
+        return None
 
 # Функция для получения почты
 def get_inbox(email):
@@ -25,6 +29,10 @@ demo_url = 'https://hidenx.name/demo/'
 def get_demo_code():
     # Генерация случайного email
     email = get_random_email()
+
+    if email is None:
+        print("Не удалось сгенерировать email.")
+        return None
 
     # Делаем запрос на форму
     session = requests.Session()
