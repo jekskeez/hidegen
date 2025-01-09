@@ -1,9 +1,9 @@
-import time
-import requests
+import asyncio  # Добавляем импорт asyncio
 from telegram import Update
 from telegram.ext import CommandHandler, ApplicationBuilder
 from bs4 import BeautifulSoup
 from pymailtm import MailTm
+import requests
 
 # Инициализация клиента для работы с Mail.tm
 mail_client = MailTm()
