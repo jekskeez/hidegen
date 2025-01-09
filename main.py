@@ -79,27 +79,56 @@ demo_url = 'https://hidenx.name/demo/'
 def register_on_site(email):
     """Регистрация на сайте с использованием указанной почты."""
     try:
-        # Создаем сессию и заходим на страницу
+        # Создаем сессию
         session = requests.Session()
-        response = session.get(demo_url)
+        
+        def load_page(url):
+            """Функция загрузки страницы."""
+            response = session.get(url)
+            if response.status_code != 200:
+                print(f"Не удалось загрузить страницу {url}. Код ответа: {response.status_code}")
+                return None
+            return BeautifulSoup(response.text, 'html.parser')
 
-        if response.status_code != 200:
-            print(f"Не удалось загрузить страницу. Код ответа: {response.status_code}")
+        # Загружаем основную страницу
+        soup = load_page(demo_url)
+        if not soup:
             return None
 
-        # Парсим HTML-страницу
-        soup = BeautifulSoup(response.text, 'html.parser')
+        # Функция для поиска поля ввода почты
+        def find_email_field(soup):
+            return soup.find('input', {'name': 'demo_mail'})
+
+        # Находим поле ввода почты
+        email_field = find_email_field(soup)
+        if not email_field:
+            print("Поле для ввода почты не найдено. Переход на резервный URL.")
+            
+            # Переход на резервный URL
+            reset_soup = load_page('https://hidenx.name/demo/reset/')
+            if not reset_soup:
+                return None
+
+            # Возвращение на основную страницу
+            print("Возвращение на основную страницу.")
+            soup = load_page(demo_url)
+            if not soup:
+                return None
+
+            # Повторный поиск поля ввода
+            email_field = find_email_field(soup)
+
+        # Если поле не найдено после всех попыток, завершить процесс
+        if not email_field:
+            print("Поле для ввода почты не найдено даже после повторного перехода.")
+            return None
 
         # Находим все скрытые поля формы
         hidden_inputs = soup.find_all('input', type='hidden')
         form_data = {input['name']: input.get('value', '') for input in hidden_inputs}
 
         # Добавляем поле для ввода почты
-        if soup.find('input', {'name': 'demo_mail'}):
-            form_data['demo_mail'] = email
-        else:
-            print("Поле для ввода почты не найдено.")
-            return None
+        form_data['demo_mail'] = email
 
         # Отправляем POST-запрос с данными формы
         response = session.post(demo_url, data=form_data)
@@ -121,8 +150,6 @@ def register_on_site(email):
     except Exception as e:
         print(f"Ошибка при регистрации: {e}")
         return None
-
-
 
 def confirm_email(email):
     try:
