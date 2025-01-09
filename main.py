@@ -318,7 +318,7 @@ async def get_test_code_telegram(update: Update, context):
 
         
 def main():
-    TELEGRAM_TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
+    TELEGRAM_TOKEN = '7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po'
 
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
