@@ -1,9 +1,12 @@
 import logging
 import time
+import re
 import requests
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from pymailtm import MailTM, MailTMClient
+from pymailtm import MailTMClient  # Используем pymailtm
+from MailTM import MailTM  # Используем MailTM
+from MailTMClient import MailTMClient  # Используем MailTMClient
 
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -13,19 +16,28 @@ logger = logging.getLogger(__name__)
 # Получаем токен бота
 TELEGRAM_TOKEN = "7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI"  # Замените на свой токен
 
-# Инициализация Mail.tm клиента
-mail_client = MailTMClient()
-mail_client.login()
+# Инициализация различных клиентов
+# Мы будем использовать клиентов из разных библиотек для получения почты
+mail_client_1 = MailTMClient()  # Клиент pymailtm
+mail_client_2 = MailTM()  # Клиент MailTM
+mail_client_3 = MailTMClient()  # Клиент MailTMClient
 
-# Функция для создания временной почты через Mail.tm
+# Авторизация с помощью MailTMClient (pymailtm)
+mail_client_1.login()
+
+# Функция для создания временной почты через pymailtm (MailTMClient)
 def create_temp_email():
-    email = mail_client.create_email()
+    email = mail_client_1.create_email()  # Создание временной почты
     return email
 
-# Функция для получения почты
+# Функция для получения почты из разных клиентов
 def get_email_inbox(email):
-    # Проверка входящих писем
-    return mail_client.get_inbox(email)
+    inbox_1 = mail_client_1.get_inbox(email)  # Получение почты через pymailtm
+    inbox_2 = mail_client_2.get_inbox(email)  # Получение почты через MailTM
+    inbox_3 = mail_client_3.get_inbox(email)  # Получение почты через MailTMClient
+    
+    # Возвращаем почту из одного из клиентов
+    return inbox_1 or inbox_2 or inbox_3
 
 # Функция для извлечения кода из письма
 def extract_code_from_email(inbox):
@@ -44,7 +56,6 @@ def request_demo_access(email):
     session = requests.Session()
     response = session.get(url)
     
-    # Предположим, что здесь происходит процесс ввода email на сайте
     # Имитация отправки email на сайт
     data = {'email': email}
     response = session.post(url, data=data)
