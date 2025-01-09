@@ -2,7 +2,7 @@ import time
 import requests
 import pymailtm
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Ваш Telegram токен
 TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
@@ -11,17 +11,17 @@ TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
 user_emails = {}
 
 # Функция для обработки команды /get
-def get_code(update: Update, context: CallbackContext) -> None:
+async def get_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
     email = create_temp_email()  # Создаем временную почту
     user_emails[user_id] = email
     
     # Отправляем пользователю временную почту
-    update.message.reply_text(f'Ваша временная почта: {email}')
+    await update.message.reply_text(f'Ваша временная почта: {email}')
 
     # Теперь запускаем процесс получения тестового кода
-    update.message.reply_text("Процесс получения тестового кода начался...")
-    get_vpn_code(email, user_id)
+    await update.message.reply_text("Процесс получения тестового кода начался...")
+    await get_vpn_code(email, user_id)
 
 def create_temp_email():
     """Функция для создания временной почты с использованием mail.tm"""
@@ -29,7 +29,7 @@ def create_temp_email():
     email = client.create_email()
     return email
 
-def get_vpn_code(email, user_id):
+async def get_vpn_code(email, user_id):
     """Функция для получения тестового кода через сайт HideMyName"""
     demo_url = 'https://hidenx.name/demo/'
     session = requests.Session()
@@ -43,12 +43,12 @@ def get_vpn_code(email, user_id):
         print("Redirected to success page")
 
         # Ожидаем получения письма с подтверждением
-        wait_for_email_confirmation(email, user_id)
+        await wait_for_email_confirmation(email, user_id)
 
         # После подтверждения почты ждем код
-        get_code_from_email(email, user_id)
+        await get_code_from_email(email, user_id)
 
-def wait_for_email_confirmation(email, user_id):
+async def wait_for_email_confirmation(email, user_id):
     """Функция для ожидания письма с подтверждением"""
     client = pymailtm.Client()
 
@@ -64,7 +64,7 @@ def wait_for_email_confirmation(email, user_id):
                     return
         time.sleep(5)  # Проверяем почту каждую секунду
 
-def get_code_from_email(email, user_id):
+async def get_code_from_email(email, user_id):
     """Функция для получения тестового кода из письма"""
     client = pymailtm.Client()
 
@@ -76,27 +76,27 @@ def get_code_from_email(email, user_id):
                 if 'Ваш тестовый код:' in message['text']:
                     code = message['text'].split("Ваш тестовый код: ")[1].strip()
                     print(f"Получен код: {code}")
-                    send_code_to_user(code, user_id)
+                    await send_code_to_user(code, user_id)
                     return
         time.sleep(5)  # Проверяем почту каждую секунду
 
-def send_code_to_user(code, user_id):
+async def send_code_to_user(code, user_id):
     """Отправка кода пользователю в Telegram"""
-    import telegram
-    bot = telegram.Bot(token=TOKEN)
+    from telegram import Bot
+    bot = Bot(token=TOKEN)
 
-    bot.send_message(user_id, f"Ваш тестовый код: {code}")
+    await bot.send_message(user_id, f"Ваш тестовый код: {code}")
 
 # Основная функция
 def main():
-    updater = Updater(TOKEN)
+    # Создаем объект Application для работы с ботом
+    application = Application.builder().token(TOKEN).build()
 
     # Добавляем обработчик команды /get
-    updater.dispatcher.add_handler(CommandHandler("get", get_code))
+    application.add_handler(CommandHandler("get", get_code))
 
     # Запускаем бота в режиме опроса
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
