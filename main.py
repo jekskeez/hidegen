@@ -205,6 +205,7 @@ def confirm_email(email, password):
             return False
 
         headers = {"Authorization": f"Bearer {token}"}
+        session = requests.Session()  # Создаём сессию для запросов
 
         for _ in range(20):  # 12 попыток по 5 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
@@ -247,10 +248,12 @@ def confirm_email(email, password):
                         if confirm_link:
                             print(f"Ссылка для подтверждения: {confirm_link}")
 
-                            # Открываем ссылку для подтверждения
-                            confirm_response = requests.get(confirm_link)
+                            # Переход по ссылке для подтверждения через сессию
+                            confirm_response = session.get(confirm_link)
+                            print(f"Ответ сервера после перехода по ссылке: {confirm_response.status_code}")
+
                             if confirm_response.status_code == 200:
-                                print("Почта подтверждена.")
+                                print("Переход по ссылке для подтверждения успешен.")
                                 return True
                             else:
                                 print(f"Ошибка при подтверждении: {confirm_response.status_code}")
