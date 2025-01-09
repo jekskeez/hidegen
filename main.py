@@ -55,7 +55,7 @@ def create_email():
         if response.status_code == 201:
             print(f"Почта успешно создана: {address}")
             print(f"Результат create_email: {address}, {password}")
-            return address
+            return address, password
         elif response.status_code == 422:
             print("Ошибка 422: Некорректные данные (например, имя пользователя или домен).")
             print(f"Ответ сервера: {response.json()}")
@@ -228,13 +228,13 @@ async def start(update: Update, context):
 
 async def get_test_code_telegram(update: Update, context):
     # Генерация почты и пароля
-    email, password = create_email()
-    print(f"Созданная почта: {email}")
-    print(f"Используемый пароль: {password}")
-
+    email, password = create_email()  # Ожидаем оба значения
     if not email or not password:
         await update.message.reply_text("Ошибка при создании почты. Попробуйте позже.")
         return
+
+    print(f"Созданная почта: {email}")
+    print(f"Используемый пароль: {password}")
 
     # Регистрация на сайте
     if not register_on_site(email):
@@ -242,20 +242,17 @@ async def get_test_code_telegram(update: Update, context):
         return
 
     # Подтверждение почты
-    if not confirm_email(email, password):  # Передаём пароль
+    if not confirm_email(email, password):  # Передаём оба аргумента
         await update.message.reply_text("Не удалось подтвердить почту.")
         return
 
     # Получение тестового кода
-    test_code = get_test_code(email, password)  # Передаём пароль
+    test_code = get_test_code(email, password)  # Передаём оба аргумента
     if test_code:
         await update.message.reply_text(f"Ваш тестовый код: {test_code}")
     else:
         await update.message.reply_text("Не удалось получить тестовый код.")
-
-
-
-
+        
 def main():
     TELEGRAM_TOKEN = '7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI'
 
