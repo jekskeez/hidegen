@@ -230,19 +230,23 @@ async def get_test_code_telegram(update: Update, context):
         await update.message.reply_text("Произошла ошибка при генерации почты.")
         return
 
+    # Передайте пароль, используемый при создании email
+    password = generate_username(12)  # Убедитесь, что этот пароль совпадает с тем, который использовался в create_email
+
     if not register_on_site(email):
         await update.message.reply_text("Ошибка при регистрации на сайте.")
         return
 
-    if not confirm_email(email):
+    if not confirm_email(email, password):  # Передаём оба аргумента
         await update.message.reply_text("Не удалось подтвердить почту.")
         return
 
-    test_code = get_test_code(email)
+    test_code = get_test_code(email, password)  # Передаём оба аргумента
     if test_code:
         await update.message.reply_text(f"Ваш тестовый код: {test_code}")
     else:
         await update.message.reply_text("Не удалось получить тестовый код.")
+
 
 
 def main():
