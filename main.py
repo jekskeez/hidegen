@@ -194,16 +194,60 @@ def register_on_site(email):
 
 def confirm_email(email, password):
     try:
-        inbox = get_inbox(email, password)
+        token = get_token(email, password)
+        if not token:
+            print("Не удалось авторизоваться. Проверьте почту и пароль.")
+            return False
 
-        for email_data in inbox:
-            if "Подтвердите e-mail" in email_data['subject']:
-                confirm_url = email_data['intro']
-                response = requests.get(confirm_url)
-                if response.status_code == 200:
-                    print("Почта подтверждена.")
-                    return True
-        print("Не найдено письмо для подтверждения.")
+        # Настройка заголовков с токеном
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Ожидание писем (до 60 секунд, проверяя каждые 5 секунд)
+        for _ in range(12):  # 12 попыток по 5 секунд
+            response = requests.get("https://api.mail.tm/messages", headers=headers)
+            if response.status_code == 200:
+                messages = response.json().get("hydra:member", [])
+                if not messages:
+                    print("Писем нет, ожидаем...")
+                    time.sleep(5)
+                    continue
+                
+                print(f"Найдено {len(messages)} писем.")
+                for message in messages:
+                    # Проверяем, подходит ли тема письма
+                    if "Подтвердить электронную почту" in message.get("subject", "") or "свободного доступа" in message.get("subject", ""):
+                        # Получаем тело письма
+                        message_id = message["id"]
+                        email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
+                        if email_response.status_code == 200:
+                            email_data = email_response.json()
+                            html_body = email_data.get("html", "")
+
+                            # Парсим HTML, чтобы найти ссылку
+                            soup = BeautifulSoup(html_body, "html.parser")
+                            confirm_link = soup.find("a", string="Подтвердить")
+                            if confirm_link:
+                                confirm_url = confirm_link["href"]
+                                print(f"Ссылка для подтверждения: {confirm_url}")
+
+                                # Открываем ссылку для подтверждения
+                                confirm_response = requests.get(confirm_url)
+                                if confirm_response.status_code == 200:
+                                    print("Почта подтверждена.")
+                                    return True
+                                else:
+                                    print(f"Ошибка при подтверждении: {confirm_response.status_code}")
+                            else:
+                                print("Не удалось найти ссылку для подтверждения в письме.")
+                        else:
+                            print(f"Ошибка при получении данных письма: {email_response.status_code}")
+                print("Ссылки на подтверждение пока нет, ожидаем...")
+                time.sleep(5)
+            else:
+                print(f"Ошибка при получении писем. Код ответа: {response.status_code}")
+                return False
+
+        print("Письмо не пришло в течение 60 секунд.")
         return False
     except Exception as e:
         print(f"Ошибка при подтверждении почты: {e}")
