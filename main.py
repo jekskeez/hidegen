@@ -9,13 +9,15 @@ mailtm = MailTm()
 
 # Функция для получения почтового ящика
 def get_temp_email():
+    # Создаем временную почту с помощью pymailtm
     mailbox = mailtm.create_mailbox()
-    return mailbox['address']
+    email_address = mailbox['address']
+    return email_address
 
 # Функция для проверки новых писем на Mail.tm
-def check_email():
+def check_email(email_address):
     while True:
-        messages = mailtm.get_messages(mailbox['address'])
+        messages = mailtm.get_messages(email_address)
         if messages:
             for message in messages:
                 if 'Подтвердите e-mail' in message['subject']:
@@ -34,9 +36,9 @@ def confirm_email(confirm_link):
         print("Failed to confirm email.")
 
 # Функция для получения тестового кода из письма
-def get_access_code():
+def get_access_code(email_address):
     while True:
-        messages = mailtm.get_messages(mailbox['address'])
+        messages = mailtm.get_messages(email_address)
         for message in messages:
             if 'Ваш код для тестового доступа' in message['subject']:
                 code = message['text'].split('Ваш тестовый код: ')[1].strip()
@@ -64,7 +66,7 @@ async def get_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Проверка письма с подтверждением
     print("Checking email for confirmation link...")
-    confirm_link = check_email()
+    confirm_link = check_email(email_address)
     
     # Подтверждаем почту
     print("Confirming email...")
@@ -72,7 +74,7 @@ async def get_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Получаем тестовый код
     print("Getting test code...")
-    test_code = get_access_code()
+    test_code = get_access_code(email_address)
     
     # Отправляем код пользователю
     await send_code_to_user(user_id, test_code)
