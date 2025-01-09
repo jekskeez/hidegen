@@ -1,95 +1,118 @@
 import time
 import requests
-from mailtm import MailTM  # Импортируем правильный класс MailTM
-from telegram import Bot, Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+import telebot
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
-# Создаем объект для работы с API MailTM
-mailtm = MailTM()
+# Ваш токен Telegram-бота
+TELEGRAM_TOKEN = "7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI"
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# Функция для получения почтового ящика
-def get_temp_email():
-    # Получаем временную почту
-    mailbox = mailtm.create_mailbox()
-    email_address = mailbox['address']
-    return email_address
-
-# Функция для проверки новых писем на Mail.tm
-def check_email(email_address):
-    while True:
-        # Получаем письма для этого почтового ящика
-        messages = mailtm.get_messages(email_address)
-        if messages:
-            for message in messages:
-                if 'Подтвердите e-mail' in message['subject']:
-                    # Найдем ссылку для подтверждения
-                    confirm_link = message['text'].split('href="')[1].split('"')[0]
-                    print(f"Confirm link: {confirm_link}")
-                    return confirm_link
-        time.sleep(5)
-
-# Подтверждаем почту
-def confirm_email(confirm_link):
-    response = requests.get(confirm_link)
-    if response.status_code == 200:
-        print("Email confirmed successfully.")
+# Функция для получения новой временной почты с API Mail.tm
+def get_mail():
+    response = requests.post('https://api.mail.tm/accounts', json={'address': 'randommail@mail.tm', 'password': 'password123'})
+    if response.status_code == 201:
+        mail = response.json()
+        email = mail['address']
+        token = mail['token']
+        return email, token
     else:
-        print("Failed to confirm email.")
+        return None, None
 
-# Функция для получения тестового кода из письма
-def get_access_code(email_address):
-    while True:
-        messages = mailtm.get_messages(email_address)
-        for message in messages:
-            if 'Ваш код для тестового доступа' in message['subject']:
-                code = message['text'].split('Ваш тестовый код: ')[1].strip()
-                print(f"Test code: {code}")
-                return code
-        time.sleep(5)
+# Инициализация WebDriver
+def init_driver():
+    options = Options()
+    options.add_argument("--headless")  # Для безголового режима
+    options.add_argument("--disable-gpu")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    return driver
 
-# Отправка тестового кода в Telegram
-async def send_code_to_user(user_id, code):
-    bot = Bot(token="7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI")
-    message = f"Ваш тестовый код: {code}"
-    await bot.send_message(chat_id=user_id, text=message)
+# Функция для автоматического ввода почты и получения перенаправления
+def submit_email_and_get_code(driver, email):
+    driver.get("https://hidenx.name/demo/")
 
-# Основная функция для команды /get
-async def get_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.chat.id
+    # Находим поле для ввода почты
+    email_input = driver.find_element(By.NAME, "email")
+    email_input.send_keys(email)
+    email_input.send_keys(Keys.RETURN)
+
+    # Ждем перенаправления на success
+    time.sleep(3)  # Можно заменить на явные ожидания
+    if "success" in driver.current_url:
+        return True
+    return False
+
+# Функция для проверки почты на наличие письма с подтверждением
+def check_mail_for_confirmation(token):
+    url = f"https://api.mail.tm/messages"
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, headers=headers)
+    messages = response.json()
     
-    # Получаем новый почтовый ящик
-    email_address = get_temp_email()
-    print(f"Generated email: {email_address}")
-    
-    # Шлем запрос на сайт для получения письма
-    demo_url = "https://hidenx.name/demo/"
-    response = requests.get(demo_url, params={"email": email_address})
-    
-    # Проверка письма с подтверждением
-    print("Checking email for confirmation link...")
-    confirm_link = check_email(email_address)
-    
-    # Подтверждаем почту
-    print("Confirming email...")
-    confirm_email(confirm_link)
-    
-    # Получаем тестовый код
-    print("Getting test code...")
-    test_code = get_access_code(email_address)
-    
-    # Отправляем код пользователю
-    await send_code_to_user(user_id, test_code)
-    await update.message.reply_text("Ваш тестовый код был отправлен!")
+    for msg in messages:
+        if "Подтвердите e-mail" in msg['subject']:
+            confirmation_url = msg['text']  # Это пример, нужно уточнить, как передается ссылка в тексте письма
+            return confirmation_url
+    return None
 
-# Настройка и запуск бота
-def main():
-    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
+# Функция для подтверждения почты через ссылку
+def confirm_email(confirmation_url):
+    driver = init_driver()
+    driver.get(confirmation_url)
+    time.sleep(2)  # Ждем выполнения перехода
+    driver.quit()
 
-    # Добавляем обработчик команды /get
-    application.add_handler(CommandHandler("get", get_code))
+# Функция для получения кода из письма
+def get_code_from_mail(token):
+    url = f"https://api.mail.tm/messages"
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, headers=headers)
+    messages = response.json()
+    
+    for msg in messages:
+        if "Ваш код для тестового доступа" in msg['subject']:
+            code = msg['text'].split("Ваш тестовый код: ")[1].strip()
+            return code
+    return None
 
-    # Запускаем бота
-    application.run_polling()
+# Хэндлер для команды /get
+@bot.message_handler(commands=['get'])
+def handle_get(message):
+    email, token = get_mail()  # Получаем временную почту
+    if email is None or token is None:
+        bot.send_message(message.chat.id, "Ошибка при получении почты. Попробуйте снова.")
+        return
 
-if __name__ == '__main__':
-    main()
+    bot.send_message(message.chat.id, f"Используется почта: {email}. Пожалуйста, подождите.")
+
+    driver = init_driver()
+
+    if submit_email_and_get_code(driver, email):
+        bot.send_message(message.chat.id, "Почта успешно отправлена на сайт. Пожалуйста, подтвердите вашу почту.")
+
+        # Проверка почты на наличие письма с подтверждением
+        confirmation_url = check_mail_for_confirmation(token)
+        if confirmation_url:
+            bot.send_message(message.chat.id, "Подтверждаю почту...")
+            confirm_email(confirmation_url)
+
+            # Ожидаем письмо с кодом
+            bot.send_message(message.chat.id, "Ожидаем код доступа...")
+            code = get_code_from_mail(token)
+            if code:
+                bot.send_message(message.chat.id, f"Ваш код для тестового доступа: {code}")
+            else:
+                bot.send_message(message.chat.id, "Код не найден.")
+        else:
+            bot.send_message(message.chat.id, "Не удалось найти письмо с подтверждением.")
+    else:
+        bot.send_message(message.chat.id, "Не удалось отправить почту на сайт.")
+    
+    driver.quit()
+
+# Запуск бота
+bot.polling()
