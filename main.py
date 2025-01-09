@@ -100,6 +100,9 @@ async def main():
     # Запускаем бота
     await application.run_polling()
 
+# Вместо asyncio.run(main()) используем await main() прямо в активном цикле
 if __name__ == "__main__":
+    import nest_asyncio
+    nest_asyncio.apply()  # Это необходимо для работы с уже активным циклом в Colab
     import asyncio
-    asyncio.run(main())
+    asyncio.run(main())  # Запускаем асинхронную функцию
