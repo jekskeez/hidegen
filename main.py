@@ -206,56 +206,63 @@ def confirm_email(email, password):
 
         headers = {"Authorization": f"Bearer {token}"}
 
-        for _ in range(20):  # 12 попыток по 5 секунд
+        for _ in range(12):  # 12 попыток по 5 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
             if response.status_code == 200:
                 messages = response.json().get("hydra:member", [])
                 if not messages:
                     print("Писем нет, ожидаем...")
-                    time.sleep(10)
+                    time.sleep(5)
                     continue
-                
+
                 print(f"Найдено {len(messages)} писем.")
                 for message in messages:
-                    # Логирование содержимого письма
-                    print(f"Содержимое письма: {message}")
+                    # Извлекаем ID письма
+                    message_id = message["id"]
+                    print(f"Обрабатываем письмо с ID: {message_id}")
 
-                    if "Подтвердить электронную почту" in message.get("subject", "") or "свободного доступа" in message.get("subject", ""):
-                        message_id = message["id"]
-                        email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
-                        if email_response.status_code == 200:
-                            email_data = email_response.json()
-                            html_body = email_data.get("html", "")
-                            text_body = email_data.get("text", "")
+                    # Извлекаем содержимое письма с помощью GET /messages/{id}
+                    email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
+                    if email_response.status_code == 200:
+                        email_data = email_response.json()
+                        print(f"Содержимое письма (JSON): {email_data}")
 
-                            # Логирование тела письма
-                            print(f"Текст письма: {text_body}")
-                            print(f"HTML письма: {html_body}")
+                        # Извлекаем текст и HTML из письма
+                        text_body = email_data.get("text", "")
+                        html_body = email_data.get("html", [""])[0]
 
-                            confirm_link = None
-                            if html_body:
-                                soup = BeautifulSoup(html_body, "html.parser")
-                                link = soup.find("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
-                                if link:
-                                    confirm_link = link["href"]
+                        # Выводим содержимое письма
+                        print(f"Текст письма:\n{text_body}")
+                        print(f"HTML письма:\n{html_body}")
 
-                            if not confirm_link and text_body:
-                                match = re.search(r"https://hidemy\.esclick\.me/\S+", text_body)
-                                if match:
-                                    confirm_link = match.group(0)
+                        # Ищем ссылку в HTML
+                        confirm_link = None
+                        if html_body:
+                            soup = BeautifulSoup(html_body, "html.parser")
+                            link = soup.find("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
+                            if link:
+                                confirm_link = link["href"]
 
-                            if confirm_link:
-                                print(f"Ссылка для подтверждения: {confirm_link}")
-                                confirm_response = requests.get(confirm_link)
-                                if confirm_response.status_code == 200:
-                                    print("Почта подтверждена.")
-                                    return True
-                                else:
-                                    print(f"Ошибка при подтверждении: {confirm_response.status_code}")
+                        # Если не нашли в HTML, ищем в текстовой части
+                        if not confirm_link and text_body:
+                            match = re.search(r"https://hidemy\.esclick\.me/\S+", text_body)
+                            if match:
+                                confirm_link = match.group(0)
+
+                        if confirm_link:
+                            print(f"Ссылка для подтверждения: {confirm_link}")
+
+                            # Открываем ссылку для подтверждения
+                            confirm_response = requests.get(confirm_link)
+                            if confirm_response.status_code == 200:
+                                print("Почта подтверждена.")
+                                return True
                             else:
-                                print("Не удалось найти ссылку для подтверждения в письме.")
+                                print(f"Ошибка при подтверждении: {confirm_response.status_code}")
                         else:
-                            print(f"Ошибка при получении данных письма: {email_response.status_code}")
+                            print("Не удалось найти ссылку для подтверждения в письме.")
+                    else:
+                        print(f"Ошибка при получении данных письма: {email_response.status_code}")
                 print("Ссылки на подтверждение пока нет, ожидаем...")
                 time.sleep(5)
             else:
@@ -267,6 +274,7 @@ def confirm_email(email, password):
     except Exception as e:
         print(f"Ошибка при подтверждении почты: {e}")
         return False
+
         
 def get_test_code(email, password):
     try:
