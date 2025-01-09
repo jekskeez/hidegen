@@ -1,54 +1,77 @@
 import logging
-import uuid
 import requests
+import uuid
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackContext
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Установим логирование
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Функция получения временного email через Mail.tm
-def get_temp_email():
-    url = 'https://api.mail.tm/accounts'
-    
-    # Генерация уникального имени для почты
-    random_name = str(uuid.uuid4().hex)  # Генерация уникального имени с помощью UUID
-    email_address = random_name  # Только имя пользователя, без домена
+# Функция для получения токена
+def get_token(address, password):
+    url = 'https://api.mail.tm/token'
+    payload = {
+        "address": address,
+        "password": password
+    }
 
+    response = requests.post(url, json=payload)
+    
+    if response.status_code == 200:
+        token_data = response.json()
+        return token_data['token']
+    else:
+        print(f"Ошибка получения токена. Код ошибки: {response.status_code}")
+        return None
+
+# Функция получения списка доменов
+def get_domains(token):
+    url = 'https://api.mail.tm/domains'
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        domains_data = response.json()
+        if domains_data["hydra:member"]:
+            domain = domains_data["hydra:member"][0]["domain"]
+            return domain
+        else:
+            print("Нет доступных доменов.")
+            return None
+    else:
+        print(f"Ошибка получения доменов. Код ошибки: {response.status_code}")
+        return None
+
+# Функция создания временной почты
+def create_temp_email(token, domain):
+    random_name = str(uuid.uuid4().hex)  # Генерация уникального имени
+    email_address = f"{random_name}@{domain}"
+    
+    url = 'https://api.mail.tm/accounts'
     payload = {
         "address": email_address,
         "password": "password"
     }
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        email_data = response.json()
+        email = email_data['address']
+        return email
+    else:
+        print(f"Ошибка создания почты. Код ошибки: {response.status_code}")
+        return None
 
-    try:
-        response = requests.post(url, json=payload)
-        print("Ответ от API:", response.text)  # Выводим ответ от API для отладки
-
-        if response.status_code == 200:
-            email_data = response.json()
-            email = email_data['address']
-            token = email_data['token']
-            return email, token
-        else:
-            print(f"Ошибка при создании почты. Код ошибки: {response.status_code}")
-            return None, None
-    except requests.exceptions.RequestException as e:
-        print(f"Произошла ошибка при запросе к API Mail.tm: {e}")
-        return None, None
-
-# Тестируем функцию получения почты
-email, token = get_temp_email()
-if email:
-    print(f"Временный email: {email}, Токен: {token}")
-else:
-    print("Не удалось получить временный email.")
 # Настройка драйвера Selenium
 def setup_driver():
     options = Options()
@@ -91,40 +114,46 @@ def check_email_for_code(token):
     return None
 
 # Обработчик команды /get в Telegram
-async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Запрос отправлен. Подождите, пока мы обработаем вашу информацию.")
     
     # Получаем временный email
-    email, token = get_temp_email()
+    address = "your_email@example.com"  # Укажите свою почту для получения токена
+    password = "your_password"  # Укажите пароль для этой почты
+    token = get_token(address, password)
     
-    if email is None:
-        await update.message.reply_text("Произошла ошибка при получении временного email.")
-        return
-    
-    await update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
-
-    # Пройдем регистрацию и получим код
-    code = get_code_from_site(email)
-    
-    if code:
-        await update.message.reply_text(f"Ваш тестовый код: {code}")
+    if token:
+        domain = get_domains(token)
+        if domain:
+            email = create_temp_email(token, domain)
+            if email:
+                update.message.reply_text(f"Ваш временный email: {email}. Пожалуйста, подождите...")
+                
+                # Пройдем регистрацию и получим код
+                code = get_code_from_site(email)
+                
+                if code:
+                    update.message.reply_text(f"Ваш тестовый код: {code}")
+                else:
+                    update.message.reply_text("Произошла ошибка при получении кода.")
+            else:
+                update.message.reply_text("Не удалось создать временный email.")
+        else:
+            update.message.reply_text("Не удалось получить домен.")
     else:
-        await update.message.reply_text("Произошла ошибка при получении кода.")
+        update.message.reply_text("Не удалось получить токен.")
 
 # Основная функция для запуска бота
-async def main():
+def main():
     # Получаем токен для Telegram-бота
-    application = Application.builder().token("7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI").build()
+    updater = Updater("YOUR_BOT_TOKEN")
     
     # Регистрируем обработчик команд
-    application.add_handler(CommandHandler("get", start))
+    updater.dispatcher.add_handler(CommandHandler("get", start))
     
     # Запускаем бота
-    await application.run_polling()
+    updater.start_polling()
+    updater.idle()
 
-# Вместо asyncio.run(main()) используем await main() прямо в активном цикле
 if __name__ == "__main__":
-    import nest_asyncio
-    nest_asyncio.apply()  # Это необходимо для работы с уже активным циклом в Colab
-    import asyncio
-    asyncio.run(main())  # Запускаем асинхронную функцию
+    main()
