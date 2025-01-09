@@ -197,11 +197,6 @@ def register_on_site(email):
 import re
 from bs4 import BeautifulSoup
 
-import requests
-from bs4 import BeautifulSoup
-import re
-import time
-
 def confirm_email(email, password):
     try:
         token = get_token(email, password)
@@ -212,7 +207,7 @@ def confirm_email(email, password):
         headers = {"Authorization": f"Bearer {token}"}
         session = requests.Session()  # Создаём сессию для запросов
 
-        for _ in range(20):  # 12 попыток по 5 секунд
+        for _ in range(20):  # 20 попыток по 8 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
             if response.status_code == 200:
                 messages = response.json().get("hydra:member", [])
@@ -239,9 +234,14 @@ def confirm_email(email, password):
                         confirm_link = None
                         if html_body:
                             soup = BeautifulSoup(html_body, "html.parser")
-                            link = soup.find("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
-                            if link:
-                                confirm_link = link["href"]
+                            # Находим все теги <a> с нужным href
+                            links = soup.find_all("a", href=re.compile(r"^https://hidemy\.esclick\.me/"))
+                            for link in links:
+                                # Проверяем, находится ли ссылка в теге <span> с текстом "Подтвердить"
+                                parent = link.find_parent("span")
+                                if parent and "Подтвердить" in parent.text:
+                                    confirm_link = link["href"]
+                                    break
 
                         if confirm_link:
                             print(f"Ссылка для подтверждения: {confirm_link}")
@@ -260,18 +260,12 @@ def confirm_email(email, password):
                     else:
                         print(f"Ошибка при получении данных письма: {email_response.status_code}")
                 print("Ссылки на подтверждение пока нет, ожидаем...")
-                time.sleep(5)
+                time.sleep(8)
             else:
                 print(f"Ошибка при получении писем. Код ответа: {response.status_code}")
                 return False
 
-        print("Письмо не пришло в течение 60 секунд.")
-        return False
-    except Exception as e:
-        print(f"Ошибка при подтверждении почты: {e}")
-        return False
-
-        print("Письмо не пришло в течение 60 секунд.")
+        print("Письмо не пришло в течение 160 секунд.")
         return False
     except Exception as e:
         print(f"Ошибка при подтверждении почты: {e}")
