@@ -90,7 +90,6 @@ def get_token(email, password):
 
 
 def get_inbox(email, password, retries=20, delay=10):
-    """Получение писем из почтового ящика."""
     token = get_token(email, password)
     if not token:
         print("Не удалось авторизоваться. Проверьте почту и пароль.")
@@ -105,6 +104,8 @@ def get_inbox(email, password, retries=20, delay=10):
             messages = response.json().get("hydra:member", [])
             if messages:
                 print(f"Найдено {len(messages)} писем.")
+                for message in messages:
+                    print(f"Содержимое письма: {message}")
                 return messages
         else:
             print(f"Ошибка при получении писем: {response.status_code}")
@@ -114,6 +115,7 @@ def get_inbox(email, password, retries=20, delay=10):
 
     print("Не удалось получить письма за указанное время.")
     return []
+
         
 demo_url = 'https://hidenx.name/demo/'
 
@@ -202,24 +204,23 @@ def confirm_email(email, password):
             print("Не удалось авторизоваться. Проверьте почту и пароль.")
             return False
 
-        # Настройка заголовков с токеном
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Ожидание писем (до 60 секунд, проверяя каждые 5 секунд)
-        for _ in range(20):  # 12 попыток по 5 секунд
+        for _ in range(12):  # 12 попыток по 5 секунд
             response = requests.get("https://api.mail.tm/messages", headers=headers)
             if response.status_code == 200:
                 messages = response.json().get("hydra:member", [])
                 if not messages:
                     print("Писем нет, ожидаем...")
-                    time.sleep(10)
+                    time.sleep(5)
                     continue
                 
                 print(f"Найдено {len(messages)} писем.")
                 for message in messages:
-                    # Проверяем, подходит ли тема письма
+                    # Логирование содержимого письма
+                    print(f"Содержимое письма: {message}")
+
                     if "Подтвердить электронную почту" in message.get("subject", "") or "свободного доступа" in message.get("subject", ""):
-                        # Получаем тело письма
                         message_id = message["id"]
                         email_response = requests.get(f"https://api.mail.tm/messages/{message_id}", headers=headers)
                         if email_response.status_code == 200:
@@ -227,7 +228,10 @@ def confirm_email(email, password):
                             html_body = email_data.get("html", "")
                             text_body = email_data.get("text", "")
 
-                            # Ищем ссылку в HTML
+                            # Логирование тела письма
+                            print(f"Текст письма: {text_body}")
+                            print(f"HTML письма: {html_body}")
+
                             confirm_link = None
                             if html_body:
                                 soup = BeautifulSoup(html_body, "html.parser")
@@ -235,7 +239,6 @@ def confirm_email(email, password):
                                 if link:
                                     confirm_link = link["href"]
 
-                            # Если не нашли в HTML, ищем в текстовой части
                             if not confirm_link and text_body:
                                 match = re.search(r"https://hidemy\.esclick\.me/\S+", text_body)
                                 if match:
@@ -243,8 +246,6 @@ def confirm_email(email, password):
 
                             if confirm_link:
                                 print(f"Ссылка для подтверждения: {confirm_link}")
-
-                                # Открываем ссылку для подтверждения
                                 confirm_response = requests.get(confirm_link)
                                 if confirm_response.status_code == 200:
                                     print("Почта подтверждена.")
