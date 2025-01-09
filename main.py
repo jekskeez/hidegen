@@ -1,11 +1,11 @@
 import time
 import requests
-from pymailtm import MailTm
+from mailtmapi import MailTM  # Импортируем правильный класс MailTM
 from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Создаем объект для работы с API Mail.tm
-mailtm = MailTm()
+# Создаем объект для работы с API MailTM
+mailtm = MailTM()
 
 # Функция для получения почтового ящика
 def get_temp_email():
@@ -17,6 +17,7 @@ def get_temp_email():
 # Функция для проверки новых писем на Mail.tm
 def check_email(email_address):
     while True:
+        # Получаем письма для этого почтового ящика
         messages = mailtm.get_messages(email_address)
         if messages:
             for message in messages:
