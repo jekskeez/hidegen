@@ -1,40 +1,37 @@
 import time
 import requests
-from pymailtm import MailTm
 from telegram import Update
 from telegram.ext import CommandHandler, ApplicationBuilder
 from bs4 import BeautifulSoup
-import asyncio
+from pymailtm import MailTm
 
 # Инициализация клиента для работы с Mail.tm
 mail_client = MailTm()
 
-# Функция для получения случайного почтового адреса
-def get_random_email():
-    # Используем get_account для получения информации о почте
-    account = mail_client.get_account()
-    if account and 'email' in account:
-        return account['email']  # Возвращаем почту из полученного аккаунта
+# Функция для создания нового почтового ящика
+def create_email():
+    # Создаем новый почтовый ящик
+    account = mail_client._open_account()  # или используйте другой метод, если доступен для создания
+    if account:
+        email = account['address']  # Получаем созданный email
+        print(f"Почта успешно создана: {email}")
+        return email
     else:
-        print("Не удалось получить почту.")
+        print("Не удалось создать почту.")
         return None
 
-# Функция для получения почты
+# Функция для получения почтового ящика
 def get_inbox(email):
-    return mail_client.get_inbox(email)
+    # Получаем все письма в почтовом ящике
+    inbox = mail_client.get_inbox(email)
+    return inbox
 
 # Ссылка на демо-страницу HideMyName
 demo_url = 'https://hidenx.name/demo/'
 
-def get_demo_code():
-    # Генерация случайного email
-    email = get_random_email()
-
-    if email is None:
-        print("Не удалось сгенерировать email.")
-        return None
-
-    # Делаем запрос на форму
+# Функция для регистрации на сайте с использованием почты
+def register_on_site(email):
+    # Создаем сессию и заходим на страницу
     session = requests.Session()
     response = session.get(demo_url)
     
@@ -58,6 +55,7 @@ def get_demo_code():
         print("Ошибка при отправке почты.")
         return None
 
+# Функция для подтверждения почты
 def confirm_email(email):
     # Проверка почты на наличие письма с подтверждением
     inbox = get_inbox(email)
@@ -72,6 +70,7 @@ def confirm_email(email):
     print("Не найдено письмо для подтверждения.")
     return False
 
+# Функция для получения тестового кода
 def get_test_code(email):
     # После подтверждения почты ждем письмо с тестовым кодом
     inbox = get_inbox(email)
@@ -93,11 +92,16 @@ async def start(update: Update, context):
 
 async def get_test_code_telegram(update: Update, context):
     # Генерация почты и получение кода
-    email = get_demo_code()
+    email = create_email()
     if email is None:
         await update.message.reply_text("Произошла ошибка при генерации почты.")
         return
 
+    # Регистрация на сайте с этой почтой
+    if not register_on_site(email):
+        await update.message.reply_text("Ошибка при регистрации на сайте.")
+        return
+    
     # Подтверждение почты
     if not confirm_email(email):
         await update.message.reply_text("Не удалось подтвердить почту.")
