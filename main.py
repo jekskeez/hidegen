@@ -67,50 +67,52 @@ def create_email():
         print(f"Ошибка при создании почты: {e}")
         return None
 
-def get_inbox(email, password, retries=10, delay=5):
-    """Получение писем для указанного email с ожиданием."""
+def get_token(email, password):
+    """Получение токена авторизации."""
     try:
-        # Авторизация на сервере
         login_payload = {
             "address": email,
             "password": password
         }
         auth_response = requests.post("https://api.mail.tm/token", json=login_payload)
 
-        if auth_response.status_code != 200:
+        if auth_response.status_code == 200:
+            token = auth_response.json().get("token")
+            print(f"Успешно получен токен для {email}")
+            return token
+        else:
             print(f"Ошибка авторизации: {auth_response.status_code}")
             print(f"Ответ сервера: {auth_response.text}")
-            return []
-
-        token = auth_response.json()["token"]
-
-        # Заголовок авторизации
-        headers = {"Authorization": f"Bearer {token}"}
-
-        # Пытаемся получить сообщения с ожиданием
-        for attempt in range(retries):
-            print(f"Попытка {attempt + 1}/{retries} получить письма...")
-            messages_response = requests.get("https://api.mail.tm/messages", headers=headers)
-
-            if messages_response.status_code != 200:
-                print(f"Ошибка при получении писем: {messages_response.status_code}")
-                print(f"Ответ сервера: {messages_response.text}")
-                time.sleep(delay)
-                continue
-
-            messages_data = messages_response.json().get("hydra:member", [])
-            if messages_data:
-                print(f"Найдены письма: {len(messages_data)}")
-                return messages_data
-
-            print(f"Нет писем. Ожидание {delay} секунд...")
-            time.sleep(delay)
-
-        print("Письма не пришли за указанное время.")
-        return []
+            return None
     except Exception as e:
-        print(f"Ошибка при получении писем: {e}")
+        print(f"Ошибка при получении токена: {e}")
+        return None
+
+def get_inbox(email, password, retries=10, delay=5):
+    token = get_token(email, password)
+    if not token:
+        print("Не удалось авторизоваться. Проверьте почту и пароль.")
         return []
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    for attempt in range(retries):
+        print(f"Попытка {attempt + 1}/{retries} получить письма...")
+        response = requests.get("https://api.mail.tm/messages", headers=headers)
+        if response.status_code == 200:
+            messages = response.json().get("hydra:member", [])
+            if messages:
+                print(f"Найдено {len(messages)} писем.")
+                return messages
+        else:
+            print(f"Ошибка при получении писем: {response.status_code}")
+            print(f"Ответ сервера: {response.text}")
+
+        time.sleep(delay)
+
+    print("Не удалось получить письма за указанное время.")
+    return []
+
         
 demo_url = 'https://hidenx.name/demo/'
 
