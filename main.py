@@ -306,16 +306,21 @@ def get_test_code(email, password):
                             # Извлекаем тестовый код
                             test_code = intro.split(":")[1].strip()
                             print(f"Тестовый код: {test_code}")
+
+                            # Возврат найденного тестового кода и выход из функции
+                            return test_code
                         else:
                             print(f"Ошибка при получении данных письма: {email_response.status_code}")
             else:
                 print(f"Ошибка при получении писем. Код ответа: {response.status_code}")
                 return None
+
         print("Письмо с тестовым кодом не пришло в течение 160 секунд.")
         return None
     except Exception as e:
         print(f"Ошибка при получении тестового кода: {e}")
         return None
+
 
 async def start(update: Update, context):
     await update.message.reply_text("Привет! Отправь команду /get, чтобы получить тестовый код.")
