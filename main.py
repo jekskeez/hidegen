@@ -10,7 +10,7 @@ mailtm = MailTm()
 # Функция для получения почтового ящика
 def get_temp_email():
     # Получаем временную почту
-    mailbox = mailtm.get_mailbox()
+    mailbox = mailtm.create_mailbox()
     email_address = mailbox['address']
     return email_address
 
