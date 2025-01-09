@@ -1,7 +1,9 @@
 import time
 import requests
-import telebot
+import random
+import string
 import logging
+import telebot
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -17,10 +19,22 @@ logger = logging.getLogger()
 TELEGRAM_TOKEN = "7505320830:AAFD9Wt9dvO1vTqPqa4VEvdxZbiDoAjbBqI"
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+# Функция для генерации случайного почтового адреса
+def generate_random_email():
+    """Генерация случайного почтового адреса"""
+    random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    return f"{random_string}@mail.tm"
+
 # Функция для получения новой временной почты с API Mail.tm
 def get_mail():
     try:
-        response = requests.post('https://api.mail.tm/accounts', json={'address': 'randommail@mail.tm', 'password': 'password123'})
+        email_address = generate_random_email()  # Генерация уникального адреса
+        email_data = {'address': email_address, 'password': 'password123'}
+        
+        # Отправка запроса на создание почты
+        response = requests.post('https://api.mail.tm/accounts', json=email_data)
+        
+        # Проверка статуса ответа
         if response.status_code == 201:
             mail = response.json()
             email = mail['address']
@@ -28,11 +42,26 @@ def get_mail():
             logger.info(f"Получена почта: {email}")
             return email, token
         else:
-            logger.error(f"Ошибка при получении почты, статус: {response.status_code}")
+            handle_api_error(response)
             return None, None
     except Exception as e:
         logger.error(f"Ошибка при получении почты: {str(e)}")
         return None, None
+
+# Обработка ошибок от API
+def handle_api_error(response):
+    """Обработка ошибок при запросах к API"""
+    if response.status_code == 422:
+        logger.error(f"Ошибка при создании почты: {response.status_code} - Не удается обработать запрос. Проверьте формат данных.")
+        logger.error(f"Текст ошибки: {response.text}")
+    elif response.status_code == 400:
+        logger.error(f"Ошибка в запросе: {response.status_code} - Некорректные данные.")
+        logger.error(f"Текст ошибки: {response.text}")
+    elif response.status_code == 500:
+        logger.error(f"Ошибка сервера: {response.status_code} - Проблемы на сервере Mail.tm.")
+        logger.error(f"Текст ошибки: {response.text}")
+    else:
+        logger.error(f"Неизвестная ошибка: {response.status_code} - {response.text}")
 
 # Инициализация WebDriver
 def init_driver():
