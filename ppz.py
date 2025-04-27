@@ -1,6 +1,7 @@
+import http.client
 import requests
-import time
 import re
+import time
 from telegram import Bot
 from telegram.ext import Application, CommandHandler
 
@@ -11,23 +12,27 @@ TELEGRAM_TOKEN = "7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po"
 
 # Функция для генерации почты через API Emailnator (через RapidAPI)
 def generate_email():
+    conn = http.client.HTTPSConnection("gmailnator.p.rapidapi.com")
+
+    payload = "{\"options\":[3]}"
+
     headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": "gmailnator.p.rapidapi.com"
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': "gmailnator.p.rapidapi.com",
+        'Content-Type': "application/json"
     }
-    try:
-        url = f"{API_EMAILNATOR}/generate-email"
-        response = requests.get(url, headers=headers)
-        print("Ответ от сервера:", response.text)  # Выводим тело ответа
-        response.raise_for_status()  # Проверка на успешный статус
-        email = response.json().get("email")
-        return email
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка при обращении к API: {e}")
-        return None
-    except ValueError as e:
-        print(f"Ошибка парсинга JSON: {e}")
-        return None
+
+    conn.request("POST", "/generate-email", payload, headers)
+
+    res = conn.getresponse()
+    data = res.read()
+
+    print(data.decode("utf-8"))
+
+    # Извлекаем почту из ответа API
+    response_data = data.decode("utf-8")
+    email = re.search(r'"email":\s*"([^"]+)"', response_data)
+    return email.group(1) if email else None
 
 # Функция для регистрации на сайте
 def register_on_site(email):
@@ -43,20 +48,29 @@ def register_on_site(email):
 
 # Функция для получения сообщений на почту
 def get_email_messages(email):
-    url = f"{API_EMAILNATOR}/inbox"
-    response = requests.post(url, data={"email": email})
-    print("Ответ от API inbox:", response.text)  # Выводим тело ответа
-    return response.json().get("messages", [])
+    conn = http.client.HTTPSConnection("gmailnator.p.rapidapi.com")
 
-# Функция для извлечения ссылки подтверждения из письма
-def extract_confirmation_link(email_content):
-    match = re.search(r"https://[^\s]+", email_content)
-    return match.group(0) if match else None
+    payload = "{\"email\":\"" + email + "\",\"limit\":10}"
 
-# Функция для извлечения кода из письма
-def extract_code(email_content):
-    match = re.search(r"Ваш тестовый код: (\d+)", email_content)
-    return match.group(1) if match else None
+    headers = {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': "gmailnator.p.rapidapi.com",
+        'Content-Type': "application/json"
+    }
+
+    conn.request("POST", "/inbox", payload, headers)
+
+    res = conn.getresponse()
+    data = res.read()
+
+    return data.decode("utf-8")
+
+# Функция для извлечения ссылки подтверждения из HTML
+def extract_confirmation_link_from_html(html_content):
+    match = re.search(r'<a [^>]*href=\\?"(https?://[^\s]+)"[^>]*>Подтвердить</a>', html_content)
+    if match:
+        return match.group(1)
+    return None
 
 # Функция для отправки кода пользователю в Telegram
 def send_code_to_user(chat_id, code):
@@ -85,26 +99,34 @@ async def process_registration(update, context):
     while not confirmation_link:
         time.sleep(5)  # Ждем 5 секунд перед следующей попыткой
         messages = get_email_messages(email)
-        for message in messages:
-            if message.get("subject") == "Подтвердите e-mail":
-                confirmation_link = extract_confirmation_link(message.get("body", ""))
+        # Проверяем каждое сообщение
+        for message in messages.split('},'):
+            if '"subject": "Подтвердите e-mail"' in message:
+                # Извлекаем ссылку из HTML
+                confirmation_link = extract_confirmation_link_from_html(message)
                 if confirmation_link:
                     await update.message.reply_text(f"Ссылка для подтверждения: {confirmation_link}")
                     break
     
     # Шаг 4: Переход по ссылке (имитация клика)
     await update.message.reply_text(f"Переходим по ссылке: {confirmation_link}")
-    requests.get(confirmation_link)
+    response = requests.get(confirmation_link)
+    if response.status_code == 200:
+        await update.message.reply_text("Подтверждение прошло успешно.")
+    else:
+        await update.message.reply_text("Ошибка при переходе по ссылке.")
 
     # Шаг 5: Ожидание письма с кодом
     code = None
     while not code:
         time.sleep(5)  # Ждем 5 секунд перед следующей попыткой
         messages = get_email_messages(email)
-        for message in messages:
-            if message.get("subject") == "Ваш код для тестового доступа к сервису":
-                code = extract_code(message.get("body", ""))
-                if code:
+        for message in messages.split('},'):
+            if '"subject": "Ваш код для тестового доступа к сервису"' in message:
+                # Извлекаем код из письма
+                match = re.search(r"Ваш тестовый код: (\d+)", message)
+                if match:
+                    code = match.group(1)
                     send_code_to_user(update.message.chat_id, code)
                     await update.message.reply_text(f"Код отправлен в Telegram: {code}")
                     break
