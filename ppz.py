@@ -5,7 +5,7 @@ from telegram import Bot
 from telegram.ext import Application, CommandHandler
 
 # Константы
-API_EMAILNATOR = "https://api.emailnator.com"
+API_EMAILNATOR = "https://emailnator.com"
 TELEGRAM_TOKEN = "7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po"
 
 # Функция для генерации почты через API Emailnator
