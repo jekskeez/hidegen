@@ -11,9 +11,18 @@ TELEGRAM_TOKEN = "7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po"
 # Функция для генерации почты через API Emailnator
 def generate_email():
     url = f"{API_EMAILNATOR}/generate-email"
-    response = requests.post(url)
-    email = response.json().get("email")
-    return email
+    try:
+        response = requests.post(url)
+        print("Ответ от сервера:", response.text)  # Выводим тело ответа
+        response.raise_for_status()  # Проверка на успешный статус
+        email = response.json().get("email")
+        return email
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при обращении к API: {e}")
+        return None
+    except ValueError as e:
+        print(f"Ошибка парсинга JSON: {e}")
+        return None
 
 # Функция для регистрации на сайте
 def register_on_site(email):
@@ -31,6 +40,7 @@ def register_on_site(email):
 def get_email_messages(email):
     url = f"{API_EMAILNATOR}/inbox"
     response = requests.post(url, data={"email": email})
+    print("Ответ от API inbox:", response.text)  # Выводим тело ответа
     return response.json().get("messages", [])
 
 # Функция для извлечения ссылки подтверждения из письма
@@ -52,6 +62,10 @@ def send_code_to_user(chat_id, code):
 async def process_registration(update, context):
     # Шаг 1: Генерация почты
     email = generate_email()
+    if email is None:
+        await update.message.reply_text("Ошибка при генерации почты.")
+        return
+
     await update.message.reply_text(f"Генерируем почту: {email}")
 
     # Шаг 2: Регистрация на сайте
