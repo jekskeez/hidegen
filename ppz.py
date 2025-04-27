@@ -6,7 +6,7 @@ from telegram.ext import Updater, CommandHandler
 
 # Константы
 API_EMAILNATOR = "https://api.emailnator.com"
-TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"
+TELEGRAM_TOKEN = "7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po"
 
 # Функция для генерации почты через API Emailnator
 def generate_email():
