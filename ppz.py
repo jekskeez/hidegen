@@ -5,14 +5,19 @@ from telegram import Bot
 from telegram.ext import Application, CommandHandler
 
 # Константы
-API_EMAILNATOR = "https://emailnator.com"
+API_EMAILNATOR = "https://gmailnator.p.rapidapi.com"
+RAPIDAPI_KEY = "ad1b3054edmsh789f00e777ead14p1af3bcjsn948b23294e77"
 TELEGRAM_TOKEN = "7505320830:AAFa_2WvRVEo_I1YkiO-RQDS2FwGtLJY1po"
 
-# Функция для генерации почты через API Emailnator
+# Функция для генерации почты через API Emailnator (через RapidAPI)
 def generate_email():
-    url = f"{API_EMAILNATOR}/generate-email"
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "gmailnator.p.rapidapi.com"
+    }
     try:
-        response = requests.post(url)
+        url = f"{API_EMAILNATOR}/generate-email"
+        response = requests.get(url, headers=headers)
         print("Ответ от сервера:", response.text)  # Выводим тело ответа
         response.raise_for_status()  # Проверка на успешный статус
         email = response.json().get("email")
