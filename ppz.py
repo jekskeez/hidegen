@@ -2,7 +2,7 @@ import requests
 import time
 import re
 from telegram import Bot
-from telegram.ext import Updater, CommandHandler
+from telegram.ext import Application, CommandHandler
 
 # Константы
 API_EMAILNATOR = "https://api.emailnator.com"
@@ -49,17 +49,17 @@ def send_code_to_user(chat_id, code):
     bot.send_message(chat_id=chat_id, text=f"Ваш тестовый код: {code}")
 
 # Основная логика бота
-def process_registration(update, context):
+async def process_registration(update, context):
     # Шаг 1: Генерация почты
     email = generate_email()
-    update.message.reply_text(f"Генерируем почту: {email}")
+    await update.message.reply_text(f"Генерируем почту: {email}")
 
     # Шаг 2: Регистрация на сайте
     while not register_on_site(email):
         email = generate_email()  # Пробуем снова с новой почтой
-        update.message.reply_text(f"Почта уже использована, пробуем другую: {email}")
+        await update.message.reply_text(f"Почта уже использована, пробуем другую: {email}")
     
-    update.message.reply_text(f"Регистрация успешна для {email}, ждем письмо с подтверждением!")
+    await update.message.reply_text(f"Регистрация успешна для {email}, ждем письмо с подтверждением!")
 
     # Шаг 3: Ожидание письма с подтверждением
     confirmation_link = None
@@ -70,11 +70,11 @@ def process_registration(update, context):
             if message.get("subject") == "Подтвердите e-mail":
                 confirmation_link = extract_confirmation_link(message.get("body", ""))
                 if confirmation_link:
-                    update.message.reply_text(f"Ссылка для подтверждения: {confirmation_link}")
+                    await update.message.reply_text(f"Ссылка для подтверждения: {confirmation_link}")
                     break
     
     # Шаг 4: Переход по ссылке (имитация клика)
-    update.message.reply_text(f"Переходим по ссылке: {confirmation_link}")
+    await update.message.reply_text(f"Переходим по ссылке: {confirmation_link}")
     requests.get(confirmation_link)
 
     # Шаг 5: Ожидание письма с кодом
@@ -87,16 +87,14 @@ def process_registration(update, context):
                 code = extract_code(message.get("body", ""))
                 if code:
                     send_code_to_user(update.message.chat_id, code)
-                    update.message.reply_text(f"Код отправлен в Telegram: {code}")
+                    await update.message.reply_text(f"Код отправлен в Telegram: {code}")
                     break
 
 # Основной запуск бота
 def main():
-    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("get", process_registration))  # Запуск через команду /get
-    updater.start_polling()
-    updater.idle()
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application.add_handler(CommandHandler("get", process_registration))  # Запуск через команду /get
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
